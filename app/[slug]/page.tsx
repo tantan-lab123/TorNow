@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { cache } from "react";
 import { notFound } from "next/navigation";
 import { getBusinessBySlug } from "@/lib/db";
+import { dropLegacyPrefills } from "@/lib/validation";
 import BookingPage from "./BookingPage";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +18,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const business = await loadBusiness(slug);
   if (!business) return { title: "העמוד לא נמצא | Torli" };
 
-  const address = business.settings?.address?.trim();
+  // (never the old sample address some businesses still have stored)
+  const address = dropLegacyPrefills(business.settings)?.address?.trim();
   const title = `${business.name} | קביעת תור`;
   const description = address
     ? `קביעת תור אונליין ב${business.name}, ${address}. בוחרים שירות ושעה, בלי שיחת טלפון.`
