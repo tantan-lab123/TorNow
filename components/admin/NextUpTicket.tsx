@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { MessageCircle, Phone } from "lucide-react";
 import { Appointment } from "@/lib/types";
-import { formatTime, toInternationalPhone } from "@/lib/utils";
+import { formatTime, isBlockedTime, toInternationalPhone } from "@/lib/utils";
 
 interface NextUpTicketProps {
   appointments: Appointment[];
@@ -35,7 +35,7 @@ export function NextUpTicket({ appointments }: NextUpTicketProps) {
   }, []);
 
   const live = appointments
-    .filter((a) => a.status !== "cancelled" && !a.notes?.includes("[זמן חסום]"))
+    .filter((a) => a.status !== "cancelled" && !isBlockedTime(a))
     .filter((a) => new Date(a.end_time).getTime() > now)
     .sort((a, b) => a.start_time.localeCompare(b.start_time));
   const next = live[0];

@@ -59,6 +59,7 @@ import {
   formatJewishDate,
   getJewishHolidayOrShabbat,
   generateRandomSlug,
+  isBlockedTime,
 } from "@/lib/utils";
 import { supabase } from "@/lib/db/supabase";
 import {
@@ -186,6 +187,8 @@ export default function AdminDashboardPage() {
     const map = new Map<string, Client>();
     savedClients.forEach((c) => map.set(c.id, c));
     appointments.forEach((app) => {
+      // blocked time hangs on a placeholder client, not a customer
+      if (isBlockedTime(app)) return;
       if (app.client) {
         map.set(app.client.id, app.client);
       } else if (app.client_id) {
@@ -739,7 +742,7 @@ export default function AdminDashboardPage() {
       const appDate = parseISO(app.start_time);
       if (!isSameDay(appDate, selectedDate)) return false;
       if (selectedStaffId === "all") return true;
-      const isBlock = app.notes?.includes("[זמן חסום]");
+      const isBlock = isBlockedTime(app);
       return isBlock || app.staff_id === selectedStaffId;
     });
   }, [appointments, selectedDate, selectedStaffId]);
@@ -2065,7 +2068,7 @@ export default function AdminDashboardPage() {
               ) : (
                 dailyAppointments.map((app) => {
                   const isCancelled = app.status === "cancelled";
-                  const isBlockedSlot = app.notes?.includes("[זמן חסום]");
+                  const isBlockedSlot = isBlockedTime(app);
                   const clientPhone = app.client?.phone || "";
                   const clientName = `${app.client?.first_name || ""} ${
                     app.client?.last_name || ""

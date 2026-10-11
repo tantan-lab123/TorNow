@@ -14,6 +14,10 @@ import {
 } from "./mock-data";
 import { isSupabaseConfigured, supabaseAdmin } from "./supabase";
 import { hashPassword } from "@/lib/auth";
+import { BLOCK_CLIENT_PHONE, BLOCK_NOTE_PREFIX } from "@/lib/utils";
+
+// Supabase returns at most this many rows per request, so longer lists are read in pages.
+const PAGE_SIZE = 1000;
 
 // In-Memory store for development / preview when Supabase is not connected
 declare global {
@@ -468,16 +472,25 @@ export async function deleteService(id: string): Promise<boolean> {
 // CLIENTS
 // ==============================================================================
 
+/** Real customers only (not the placeholder that blocked time hangs on), every page of them. */
 export async function getClients(businessId: string): Promise<Client[]> {
   if (isSupabaseConfigured && supabaseAdmin) {
-    const { data, error } = await supabaseAdmin!
-      .from("clients")
-      .select("*")
-      .eq("business_id", businessId);
-    if (error) throw error;
-    if (data) return data as Client[];
+    const all: Client[] = [];
+    for (let from = 0; ; from += PAGE_SIZE) {
+      const { data, error } = await supabaseAdmin!
+        .from("clients")
+        .select("*")
+        .eq("business_id", businessId)
+        .neq("phone", BLOCK_CLIENT_PHONE)
+        .order("id")
+        .range(from, from + PAGE_SIZE - 1);
+      if (error) throw error;
+      all.push(...((data || []) as Client[]));
+      if (!data || data.length < PAGE_SIZE) break;
+    }
+    return all;
   }
-  return db.clients.filter((c) => c.business_id === businessId);
+  return db.clients.filter((c) => c.business_id === businessId && c.phone !== BLOCK_CLIENT_PHONE);
 }
 
 export async function findClientByPhone(
@@ -583,9 +596,6 @@ export async function findOrCreateClient(
 // ==============================================================================
 // APPOINTMENTS
 // ==============================================================================
-
-// Supabase returns at most this many rows per request, so longer lists are read in pages.
-const PAGE_SIZE = 1000;
 
 /**
  * Appointments of one business, oldest first, with their service and client.
@@ -741,7 +751,7 @@ export async function blockTimeSlot({
 }): Promise<Appointment> {
   // Ensure a special "חסימת זמן" client exists for this business
   const blockClient = await findOrCreateClient(business_id, {
-    phone: "0000000000",
+    phone: BLOCK_CLIENT_PHONE,
     first_name: "חסימה",
     last_name: `(${reason || "הפסקה"})`,
   });
@@ -752,7 +762,7 @@ export async function blockTimeSlot({
     client_id: blockClient.id,
     start_time,
     end_time,
-    notes: `[זמן חסום] ${reason || "הפסקה/סידורים"}`,
+    notes: `${BLOCK_NOTE_PREFIX} ${reason || "הפסקה/סידורים"}`,
   });
 }
 

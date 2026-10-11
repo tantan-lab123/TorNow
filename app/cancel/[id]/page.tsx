@@ -45,6 +45,9 @@ export default function CancelAppointmentPage() {
   const [moveSlots, setMoveSlots] = useState<Slot[]>([]);
   const [moveLoading, setMoveLoading] = useState(false);
   const [moveMsg, setMoveMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  // Both actions take two taps: a mis-tap on a phone must not cancel or move a booking
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [pendingSlot, setPendingSlot] = useState<Slot | null>(null);
 
   useEffect(() => {
     const loadAppointment = async () => {
@@ -108,6 +111,7 @@ export default function CancelAppointmentPage() {
   const loadMoveSlots = async (dateStr: string) => {
     if (!details?.business_id || !details.service_id) return;
     setMoveDate(dateStr);
+    setPendingSlot(null);
     setMoveLoading(true);
     setMoveMsg(null);
     try {
@@ -137,6 +141,7 @@ export default function CancelAppointmentPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         if (data.blocked) setBlockedReason(data.error);
+        setPendingSlot(null);
         setMoveMsg({ ok: false, text: data.error || "לא הצלחנו לשנות את התור" });
         return;
       }
@@ -145,9 +150,13 @@ export default function CancelAppointmentPage() {
           ? { ...prev, start_time: data.appointment.start_time, end_time: data.appointment.end_time }
           : prev
       );
-      setMoveMsg({ ok: true, text: "התור הועבר בהצלחה!" });
+      setMoveMsg({
+        ok: true,
+        text: `התור הועבר ל${formatHebrewDate(data.appointment.start_time)} בשעה ${formatTime(data.appointment.start_time)}`,
+      });
       setMoveOpen(false);
       setMoveSlots([]);
+      setPendingSlot(null);
     } finally {
       setMoveLoading(false);
     }
@@ -271,11 +280,6 @@ export default function CancelAppointmentPage() {
               </div>
             </div>
 
-            <div className="bg-rose-50 border border-rose-200 rounded-2xl p-3.5 text-xs text-rose-800">
-              <p className="font-semibold mb-0.5">שים לב:</p>
-              <p>ביטול התור ישחרר את המשבצת באופן מיידי ולא ניתן יהיה לשחזרו.</p>
-            </div>
-
             {/* Policy: too close to the appointment -> contact the business */}
             {(blockedReason || (details && details.can_modify === false && details.modify_blocked_reason)) ? (
               <div className="space-y-3 pt-2">
@@ -317,6 +321,7 @@ export default function CancelAppointmentPage() {
                       size="lg"
                       className="w-full"
                       onClick={() => {
+                        setConfirmCancel(false);
                         setMoveOpen(true);
                         loadMoveSlots(moveDate);
                       }}
@@ -336,38 +341,102 @@ export default function CancelAppointmentPage() {
                       {moveLoading && <p className="text-xs text-slate-500">בודק זמינות...</p>}
                       {!moveLoading && moveSlots.length > 0 && (
                         <div className="grid grid-cols-4 gap-2">
-                          {moveSlots.map((sl) => (
-                            <button
-                              key={sl.startTime}
-                              type="button"
-                              onClick={() => doMove(sl)}
-                              className="h-10 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-800 hover:border-indigo-500 hover:text-indigo-700"
-                            >
-                              {sl.formattedTime}
-                            </button>
-                          ))}
+                          {moveSlots.map((sl) => {
+                            const picked = pendingSlot?.startTime === sl.startTime;
+                            return (
+                              <button
+                                key={sl.startTime}
+                                type="button"
+                                aria-pressed={picked}
+                                onClick={() => {
+                                  triggerHaptic(10);
+                                  setPendingSlot(sl);
+                                }}
+                                className={`h-11 rounded-xl border text-sm font-bold ${
+                                  picked
+                                    ? "border-indigo-600 bg-indigo-600 text-white"
+                                    : "border-slate-200 bg-white text-slate-800 hover:border-indigo-500 hover:text-indigo-700"
+                                }`}
+                              >
+                                {sl.formattedTime}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {pendingSlot && (
+                        <div className="rounded-2xl border border-slate-200 bg-white p-3 space-y-2">
+                          <p className="text-sm font-bold text-slate-900">
+                            להעביר את התור ל{formatHebrewDate(pendingSlot.startTime)} בשעה {pendingSlot.formattedTime}?
+                          </p>
+                          <Button
+                            size="lg"
+                            className="w-full"
+                            isLoading={moveLoading}
+                            onClick={() => doMove(pendingSlot)}
+                          >
+                            <span>אישור המעבר</span>
+                          </Button>
                         </div>
                       )}
                       {moveMsg && !moveMsg.ok && <p className="text-xs font-bold text-rose-600">{moveMsg.text}</p>}
-                      <Button variant="ghost" className="w-full text-xs" onClick={() => setMoveOpen(false)}>
-                        ביטול שינוי
+                      <Button
+                        variant="ghost"
+                        className="w-full text-xs"
+                        onClick={() => {
+                          setMoveOpen(false);
+                          setPendingSlot(null);
+                        }}
+                      >
+                        השארת המועד הנוכחי
                       </Button>
                     </div>
                   )}
                 </div>
 
                 {/* Cancel Action */}
-                <div className="space-y-2">
+                {!confirmCancel ? (
                   <Button
                     variant="destructive"
                     size="lg"
-                    onClick={handleCancel}
-                    isLoading={isCancelling}
+                    onClick={() => {
+                      triggerHaptic(10);
+                      setMoveOpen(false);
+                      setPendingSlot(null);
+                      setConfirmCancel(true);
+                    }}
                     className="w-full"
                   >
-                    <span>בטל את התור עכשיו</span>
+                    <span>ביטול התור</span>
                   </Button>
-                </div>
+                ) : (
+                  <div role="alertdialog" aria-labelledby="cancel-q" className="rounded-2xl border border-rose-200 bg-rose-50 p-3.5 space-y-2.5">
+                    <p id="cancel-q" className="text-sm font-bold text-rose-900">
+                      לבטל את התור ב{formatHebrewDate(appointment.start_time)} בשעה {formatTime(appointment.start_time)}?
+                    </p>
+                    <p className="text-xs text-rose-800">המועד ישתחרר מיד לאחרים, ואי אפשר לבטל את הביטול.</p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="destructive"
+                        size="lg"
+                        onClick={handleCancel}
+                        isLoading={isCancelling}
+                        className="flex-1"
+                      >
+                        <span>כן, לבטל</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        onClick={() => setConfirmCancel(false)}
+                        disabled={isCancelling}
+                        className="flex-1"
+                      >
+                        <span>לא, להשאיר</span>
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </>
             )}
 
