@@ -847,6 +847,23 @@ export default function AdminDashboardPage() {
     setRangeReason("חופשה מרוכזת (שבועיים)");
   };
 
+  // Closing a day does not cancel what is already booked on it, so say so first.
+  const confirmCloseDays = (dayStrs: string[]) => {
+    const days = new Set(dayStrs);
+    const booked = appointments.filter(
+      (a) =>
+        a.status === "confirmed" &&
+        !isBlockedTime(a) &&
+        days.has(format(new Date(a.start_time), "yyyy-MM-dd"))
+    ).length;
+    if (booked === 0) return true;
+    return confirm(
+      booked === 1
+        ? "יש תור אחד בימים שנבחרו. הסגירה לא מבטלת אותו ולא מודיעה ללקוח, כדאי לדבר איתו. לסגור בכל זאת?"
+        : `יש ${booked} תורים בימים שנבחרו. הסגירה לא מבטלת אותם ולא מודיעה ללקוחות, כדאי לדבר איתם. לסגור בכל זאת?`
+    );
+  };
+
   // Handle closing or opening a range of dates
   const handleRangeAction = async (action: "close" | "open") => {
     if (!selectedBusiness || !rangeStartDate || !rangeEndDate) return;
@@ -861,6 +878,7 @@ export default function AdminDashboardPage() {
 
       const days = eachDayOfInterval({ start, end });
       let updatedOverrides = [...editingOverrides];
+      if (action === "close" && !confirmCloseDays(days.map((d) => format(d, "yyyy-MM-dd")))) return;
 
       if (action === "close") {
         for (const d of days) {
@@ -915,6 +933,8 @@ export default function AdminDashboardPage() {
       updatedOverrides = updatedOverrides.filter((o) => o.date !== dStr);
     } else {
       // Close
+      const dayStrs = Array.from({ length: daysCount }, (_, i) => format(addDays(date, i), "yyyy-MM-dd"));
+      if (!confirmCloseDays(dayStrs)) return;
       for (let i = 0; i < daysCount; i++) {
         const targetD = addDays(date, i);
         const dStr = format(targetD, "yyyy-MM-dd");
@@ -2355,8 +2375,15 @@ export default function AdminDashboardPage() {
                 fetchAppointments();
               }}
               onDeleteService={async (serviceId) => {
+                const name = services.find((s) => s.id === serviceId)?.name || "השירות";
+                if (!confirm(`למחוק את ״${name}״? אי אפשר לשחזר.`)) return;
                 try {
-                  await fetch(`/api/services?id=${serviceId}`, { method: "DELETE" });
+                  const res = await fetch(`/api/services?id=${serviceId}`, { method: "DELETE" });
+                  if (!res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    alert(data.error || "שגיאה במחיקת השירות");
+                    return;
+                  }
                   fetchAppointments();
                 } catch (err) {
                   console.error(err);

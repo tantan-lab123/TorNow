@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
+  getAppointments,
   getServices,
   getServiceById,
   createService,
@@ -93,6 +94,22 @@ export async function DELETE(request: NextRequest) {
     const existing = await getServiceById(id);
     if (!existing) return NextResponse.json({ success: false }, { status: 404 });
     if (existing.business_id !== businessId) return forbidden();
+
+    // Deleting would strip the service from bookings that still have to happen
+    const upcoming = (await getAppointments(businessId, new Date().toISOString())).filter(
+      (a) => a.service_id === id && a.status === "confirmed"
+    ).length;
+    if (upcoming > 0) {
+      return NextResponse.json(
+        {
+          error:
+            upcoming === 1
+              ? "לשירות הזה יש תור עתידי אחד, ולכן עדיין אי אפשר למחוק אותו. אפשר למחוק אחרי שהתור יתקיים או יבוטל."
+              : `לשירות הזה יש ${upcoming} תורים עתידיים, ולכן עדיין אי אפשר למחוק אותו. אפשר למחוק אחרי שהתורים יתקיימו או יבוטלו.`,
+        },
+        { status: 409 }
+      );
+    }
 
     return NextResponse.json({ success: await deleteService(id) });
   } catch (error) {
