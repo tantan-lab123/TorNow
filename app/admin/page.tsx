@@ -73,7 +73,7 @@ import {
   parseISO,
 } from "date-fns";
 import { he } from "date-fns/locale";
-import { AdminTopBar, AdminTab } from "@/components/admin/AdminTopBar";
+import { AdminTopBar, AdminTab, HIDDEN_TABS } from "@/components/admin/AdminTopBar";
 import { NextUpTicket } from "@/components/admin/NextUpTicket";
 import { Logo } from "@/components/brand/Logo";
 import { AdminFAB } from "@/components/admin/AdminFAB";
@@ -713,7 +713,7 @@ export default function AdminDashboardPage() {
         : role === "manager"
         ? ["calendar", "stats", "customers", "services", "workschedule", "marketing", "cashregister", "settings"]
         : null;
-    if (allowed && !allowed.includes(activeTab)) setActiveTab("calendar");
+    if ((allowed && !allowed.includes(activeTab)) || HIDDEN_TABS.includes(activeTab)) setActiveTab("calendar");
   }, [role, activeTab]);
 
   // Appointments for the selected day
@@ -2062,12 +2062,15 @@ export default function AdminDashboardPage() {
                     dateDesc = "מחר";
                   }
 
+                  const bizAddress = selectedBusiness.settings?.address?.trim();
                   const waGreeting = encodeURIComponent(
                     `היי ${app.client?.first_name || "חבר"}, תזכורת לתור שלך ל${
                       app.service?.name || "טיפול"
                     } ${dateDesc} בשעה ${formatTime(app.start_time)} ב${
                       selectedBusiness.name
-                    }! נשמח לראותך 🙂`
+                    }! נשמח לראותך 🙂` +
+                      (bizAddress ? `\nכתובת: ${bizAddress}` : "") +
+                      `\nלביטול או שינוי: ${window.location.origin}/cancel/${app.id}`
                   );
 
                   return (

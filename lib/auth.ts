@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { Business } from "@/lib/types";
+import { dropLegacyPrefills } from "@/lib/validation";
 
 export const SESSION_COOKIE = "torli_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 14; // 14 days
@@ -174,13 +175,14 @@ export function verifyGoogleAccessToken(accessToken: unknown) {
 export function toPublicBusiness(b: Business): Business {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { password, pin, google_id, owner_email, calendar_token, ...rest } = b;
-  return rest as Business;
+  return { ...rest, settings: dropLegacyPrefills(rest.settings) } as Business;
 }
 
 /** Fields for the logged-in owner: never the password hash / pin / google id. */
 export function toOwnerBusiness(b: Business, role: Role = "owner"): Business {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { password, pin, google_id, ...rest } = b;
+  const clean = { ...rest, settings: dropLegacyPrefills(rest.settings) };
   // the calendar-feed secret is only for the owner and managers
-  return (role === "staff" ? rest : { ...rest, calendar_token: calendarToken(b.id) }) as Business;
+  return (role === "staff" ? clean : { ...clean, calendar_token: calendarToken(b.id) }) as Business;
 }

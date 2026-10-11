@@ -20,7 +20,7 @@ const heebo = Heebo({
 
 export const metadata: Metadata = {
   title: "Torli | תורים בלי טלפונים",
-  description: "תורלי: קביעת תורים מהטלפון לעסקים קטנים. הלקוחות קובעים לבד, התזכורות יוצאות בוואטסאפ.",
+  description: "תורלי: קביעת תורים מהטלפון לעסקים קטנים. הלקוחות קובעים לבד, ותזכורת יוצאת מהוואטסאפ שלכם בלחיצה.",
   applicationName: "Torli",
   appleWebApp: {
     capable: true,

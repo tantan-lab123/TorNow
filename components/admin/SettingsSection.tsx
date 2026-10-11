@@ -90,7 +90,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
   const [name, setName] = useState(business.name);
   const [phone, setPhone] = useState(business.owner_phone);
   const [ownerEmail, setOwnerEmail] = useState(business.owner_email || "");
-  const [address, setAddress] = useState(business.settings?.address || "רוטשילד 15, תל אביב");
+  const [address, setAddress] = useState(business.settings?.address || "");
   const [whatsapp, setWhatsapp] = useState(business.settings?.whatsapp_phone || business.owner_phone);
   const [instagram, setInstagram] = useState(business.settings?.instagram_url || "");
   const [tiktok, setTiktok] = useState(business.settings?.tiktok_url || "");
@@ -114,7 +114,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
   const [waitingList, setWaitingList] = useState(business.settings?.waiting_list_enabled ?? true);
   const [showHebrewDates, setShowHebrewDates] = useState(business.settings?.show_hebrew_dates ?? false);
   const [postBookingMsg, setPostBookingMsg] = useState(
-    business.settings?.post_booking_message || "נא להגיע 5 דקות לפני המועד שנקבע. חניה נוחה בכחול לבן ברחוב."
+    business.settings?.post_booking_message || ""
   );
 
   // Synchronize state whenever business prop updates
@@ -122,7 +122,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
     setName(business.name);
     setPhone(business.owner_phone);
     setOwnerEmail(business.owner_email || "");
-    setAddress(business.settings?.address || "רוטשילד 15, תל אביב");
+    setAddress(business.settings?.address || "");
     setWhatsapp(business.settings?.whatsapp_phone || business.owner_phone);
     setInstagram(business.settings?.instagram_url || "");
     setTiktok(business.settings?.tiktok_url || "");
@@ -141,10 +141,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
     setRequireStaff(business.settings?.require_staff_selection ?? false);
     setWaitingList(business.settings?.waiting_list_enabled ?? true);
     setShowHebrewDates(business.settings?.show_hebrew_dates ?? false);
-    setPostBookingMsg(
-      business.settings?.post_booking_message ||
-        "נא להגיע 5 דקות לפני המועד שנקבע. חניה נוחה בכחול לבן ברחוב."
-    );
+    setPostBookingMsg(business.settings?.post_booking_message || "");
   }, [business, slotInterval]);
 
   const [isSaving, setIsSaving] = useState(false);
@@ -336,10 +333,11 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
               />
 
               <Input
-                label="כתובת העסק (וויז ומיקום)"
-                placeholder="רוטשילד 15, תל אביב"
+                label="כתובת העסק"
+                placeholder="לדוגמה: הרצל 12, רמת גן"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
+                helperText="מוצגת ללקוחות בעמוד ההזמנה, עם קישור לניווט ב-Waze"
               />
 
               <Input
