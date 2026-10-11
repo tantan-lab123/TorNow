@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getBusinessByPhone, updateBusiness } from "@/lib/db";
 import { verifySupabaseToken } from "@/lib/auth";
+import { forgetCredentialCache } from "@/lib/access";
 import { validatePassword } from "@/lib/utils";
 import { isPasswordPwned, PWNED_ERROR } from "@/lib/pwned";
 import { clientIp, rateLimit, tooMany } from "@/lib/rateLimit";
@@ -50,7 +51,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "הפרטים אינם תואמים לחשבון" }, { status: 400 });
     }
 
+    // the new password also signs out every device that used the old one
     await updateBusiness(business.id, { password: new_password });
+    forgetCredentialCache(business.id);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("reset-password error:", error);

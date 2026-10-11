@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "לא נמצא חשבון מקושר ל-Google זה" }, { status: 404 });
       }
       const res = NextResponse.json({ success: true, role: "owner", business: toOwnerBusiness(business) });
-      setSessionCookie(res, business.id, "owner");
+      setSessionCookie(res, business.id, "owner", undefined, business.password);
       return res;
     }
 
@@ -52,11 +52,13 @@ export async function POST(request: NextRequest) {
     const business = await getBusinessByPhone(digits);
     const ownerCheck = verifyPassword(password, business?.password);
     if (business && ownerCheck.ok) {
+      let storedHash = business.password;
       if (ownerCheck.needsRehash) {
-        await setBusinessPasswordHash(business.id, hashPassword(password));
+        storedHash = hashPassword(password);
+        await setBusinessPasswordHash(business.id, storedHash);
       }
       const res = NextResponse.json({ success: true, role: "owner", business: toOwnerBusiness(business) });
-      setSessionCookie(res, business.id, "owner");
+      setSessionCookie(res, business.id, "owner", undefined, storedHash);
       return res;
     }
 
@@ -71,7 +73,7 @@ export async function POST(request: NextRequest) {
           staff: { id: staff.id, name: staff.name },
           business: toOwnerBusiness(staffBusiness, staff.role),
         });
-        setSessionCookie(res, staffBusiness.id, staff.role, staff.id);
+        setSessionCookie(res, staffBusiness.id, staff.role, staff.id, staff.password);
         return res;
       }
     }

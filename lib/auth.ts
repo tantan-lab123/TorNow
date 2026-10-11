@@ -41,14 +41,27 @@ export interface Session {
   businessId: string;
   role: Role;
   staffId?: string;
+  /** Fingerprint of the password hash at login (absent on tokens issued before it existed). */
+  pv?: string;
 }
 
-export function createSessionToken(businessId: string, role: Role = "owner", staffId?: string): string {
+/** Short fingerprint of a stored password hash: setting a new password ends every older session. */
+export function credentialFingerprint(passwordHash: string | null | undefined): string {
+  return sign(`cred:${passwordHash || ""}`).slice(0, 16);
+}
+
+export function createSessionToken(
+  businessId: string,
+  role: Role = "owner",
+  staffId?: string,
+  passwordHash?: string | null
+): string {
   const payload = Buffer.from(
     JSON.stringify({
       bid: businessId,
       role,
       ...(staffId ? { sid: staffId } : {}),
+      pv: credentialFingerprint(passwordHash),
       exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS,
     })
   ).toString("base64url");
@@ -60,12 +73,17 @@ export function verifySession(token: string | undefined): Session | null {
   const [payload, sig] = token.split(".");
   if (!payload || !sig || !safeEqual(sig, sign(payload))) return null;
   try {
-    const { bid, exp, role, sid } = JSON.parse(Buffer.from(payload, "base64url").toString());
+    const { bid, exp, role, sid, pv } = JSON.parse(Buffer.from(payload, "base64url").toString());
     if (typeof bid !== "string" || typeof exp !== "number") return null;
     if (exp < Math.floor(Date.now() / 1000)) return null;
     // tokens issued before roles existed were owner logins
     const r: Role = role === "manager" || role === "staff" ? role : "owner";
-    return { businessId: bid, role: r, ...(typeof sid === "string" ? { staffId: sid } : {}) };
+    return {
+      businessId: bid,
+      role: r,
+      ...(typeof sid === "string" ? { staffId: sid } : {}),
+      ...(typeof pv === "string" ? { pv } : {}),
+    };
   } catch {
     return null;
   }
@@ -79,18 +97,15 @@ export function getSession(request: NextRequest): Session | null {
   return verifySession(request.cookies.get(SESSION_COOKIE)?.value);
 }
 
-/** Business id of ANY logged-in user (owner, manager or staff), or null. */
-export function getSessionBusinessId(request: NextRequest): string | null {
-  return getSession(request)?.businessId ?? null;
-}
-
+/** `passwordHash` is the stored hash of whoever logs in (business or staff member), null if none. */
 export function setSessionCookie(
   res: NextResponse,
   businessId: string,
-  role: Role = "owner",
-  staffId?: string
+  role: Role,
+  staffId: string | undefined,
+  passwordHash: string | null | undefined
 ): void {
-  res.cookies.set(SESSION_COOKIE, createSessionToken(businessId, role, staffId), {
+  res.cookies.set(SESSION_COOKIE, createSessionToken(businessId, role, staffId, passwordHash), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",

@@ -8,8 +8,7 @@ import {
   openWaitlistForSlot,
   rescheduleAppointment,
 } from "@/lib/db";
-import { getSessionBusinessId } from "@/lib/auth";
-import { requireRole, ANY_ROLE } from "@/lib/access";
+import { getValidSession, requireRole, ANY_ROLE } from "@/lib/access";
 import { clientIp, rateLimit, tooMany } from "@/lib/rateLimit";
 import { customerChangePolicy } from "@/lib/booking/policy";
 import { generateAvailableSlots, israelDateString } from "@/lib/booking/slotGenerator";
@@ -40,7 +39,7 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ id: st
     const business = await getBusinessById(appt.business_id);
     if (!business) return NextResponse.json({ error: "עסק לא נמצא" }, { status: 404 });
 
-    const teamId = getSessionBusinessId(request);
+    const teamId = (await getValidSession(request))?.businessId ?? null;
     const isTeam = teamId !== null && teamId === appt.business_id;
     if (isTeam) {
       const auth = await requireRole(request, ANY_ROLE);

@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBusinessById, getStaffById } from "@/lib/db";
-import { getSession, toOwnerBusiness, unauthorized } from "@/lib/auth";
+import { toOwnerBusiness, unauthorized } from "@/lib/auth";
+import { getValidSession } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
 /** Returns the logged-in user's business and role (from the signed cookie). */
 export async function GET(request: NextRequest) {
-  const session = getSession(request);
+  const session = await getValidSession(request);
   if (!session) return unauthorized();
   const business = await getBusinessById(session.businessId);
   if (!business) return unauthorized();

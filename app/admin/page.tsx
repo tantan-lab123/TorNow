@@ -671,6 +671,13 @@ export default function AdminDashboardPage() {
               ? aList
               : [...prev.filter((a) => new Date(a.start_time).getTime() < since), ...aList]
           );
+        } else if (aRes.status === 401) {
+          // signed out elsewhere (password changed, account disabled): back to the login screen
+          const data: { error?: string } = await aRes.json();
+          localStorage.removeItem(ADMIN_SESSION_KEY);
+          setLoginError(data.error || "נדרשת התחברות מחדש");
+          setSelectedBusiness(null);
+          return;
         }
         if (isPolling) return;
 
