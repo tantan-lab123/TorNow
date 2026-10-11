@@ -1,5 +1,5 @@
 import { Business, Service, Appointment, TimeSlot, DayOfWeek } from "@/lib/types";
-import { format, addMinutes, isBefore, isAfter } from "date-fns";
+import { format, addMinutes, addDays, isBefore, isAfter } from "date-fns";
 import { TZDate } from "@date-fns/tz";
 
 // All business hours are wall-clock times in Israel. The server runs in UTC, so every
@@ -28,6 +28,21 @@ function israelTime(dateStr: string, hhmm: string): TZDate {
   return new TZDate(y, m - 1, d, hh, mm, 0, 0, BUSINESS_TZ);
 }
 
+/**
+ * How close and how far ahead customers may book, from the business settings.
+ * The defaults match what the settings screen shows when nothing was saved.
+ */
+export function bookingWindow(business: Pick<Business, "settings">, now: Date = new Date()) {
+  const minNoticeMinutes = Math.round((business.settings?.min_notice_hours ?? 1) * 60);
+  const maxFutureDays = business.settings?.max_future_days ?? 60;
+  return {
+    minNoticeMinutes,
+    maxFutureDays,
+    earliest: addMinutes(now, minNoticeMinutes),
+    latest: addDays(now, maxFutureDays),
+  };
+}
+
 export interface SlotGeneratorOptions {
   business: Business;
   service: Service;
@@ -50,6 +65,10 @@ export function generateAvailableSlots({
   const dateStr = format(selectedDate, "yyyy-MM-dd");
   const now = new TZDate(Date.now(), BUSINESS_TZ);
   const todayStr = format(now, "yyyy-MM-dd");
+  // Customers only see times they can actually book: at least 10 minutes and the
+  // business "minimum notice" from now, and no further than its booking window.
+  const limits = bookingWindow(business, now);
+  const earliest = addMinutes(now, Math.max(10, limits.minNoticeMinutes));
 
   // Check if date is in the past (Israel calendar)
   if (dateStr < todayStr) {
@@ -91,6 +110,14 @@ export function generateAvailableSlots({
   const openTime = israelTime(dateStr, effectiveOpen);
   const closeTime = israelTime(dateStr, effectiveClose);
 
+  if (isAfter(openTime, limits.latest)) {
+    return {
+      slots: [],
+      isOpenToday: false,
+      message: `אפשר לקבוע תור עד ${limits.maxFutureDays} ימים קדימה`,
+    };
+  }
+
   const totalRequiredMinutes = service.duration_minutes + (service.buffer_minutes || 0);
 
   // Resolution interval (e.g. 15, 20, 30, 45, 60 minutes)
@@ -110,8 +137,6 @@ export function generateAvailableSlots({
   // Active confirmed appointments
   const activeAppointments = existingAppointments.filter((app) => app.status === "confirmed");
 
-  const isToday = dateStr === todayStr;
-
   const slots: TimeSlot[] = [];
   let currentPointer = openTime;
 
@@ -123,8 +148,8 @@ export function generateAvailableSlots({
       break;
     }
 
-    // If today, filter out past slots (allow 10 mins buffer from now)
-    const isPast = isToday && isBefore(currentPointer, addMinutes(now, 10));
+    // Too soon (past, or inside the minimum notice) or beyond the booking window
+    const outsideWindow = isBefore(currentPointer, earliest) || isAfter(currentPointer, limits.latest);
 
     // Check lunch break collision
     const overlapsLunch = lunchBreak
@@ -138,7 +163,7 @@ export function generateAvailableSlots({
       return isBefore(appStart, slotEnd) && isAfter(appEnd, currentPointer);
     });
 
-    if (!isPast && !hasCollision && !overlapsLunch) {
+    if (!outsideWindow && !hasCollision && !overlapsLunch) {
       const hours = currentPointer.getHours();
       let period: "morning" | "afternoon" | "evening" = "morning";
       if (hours >= 12 && hours < 17) {

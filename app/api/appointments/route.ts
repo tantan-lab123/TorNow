@@ -13,20 +13,27 @@ import {
 } from "@/lib/db";
 import {
   addMinutes,
-  addDays,
   isBefore,
   isAfter,
   parseISO,
   isSameDay,
   isSameWeek,
   isSameMonth,
+  startOfMonth,
+  subDays,
 } from "date-fns";
 import { after } from "next/server";
 import { forbidden, getSessionBusinessId, verifyGoogleAccessToken } from "@/lib/auth";
 import { requireRole, ANY_ROLE } from "@/lib/access";
 import { notifyBusiness } from "@/lib/push";
 import { formatHebrewDate, formatTime } from "@/lib/utils";
-import { generateAvailableSlots, israelDateString } from "@/lib/booking/slotGenerator";
+import { TZDate } from "@date-fns/tz";
+import {
+  BUSINESS_TZ,
+  bookingWindow,
+  generateAvailableSlots,
+  israelDateString,
+} from "@/lib/booking/slotGenerator";
 import { clientIp, rateLimit, tooMany } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
@@ -61,6 +68,9 @@ const blockSlotSchema = z.object({
   end_time: z.string().datetime(),
   reason: z.string().max(120).default("הפסקה / סידורים"),
 });
+
+/** An instant on the Israeli wall clock, so day/week/month math matches the business. */
+const inIsrael = (instant: string | Date) => new TZDate(new Date(instant), BUSINESS_TZ);
 
 /** Logged-in team only: the appointment book with client details. */
 export async function GET(request: NextRequest) {
@@ -152,15 +162,20 @@ export async function POST(request: NextRequest) {
     const slotEndIso = slotEnd.toISOString();
 
     // Respect the business booking window (server-side, not only in the UI)
-    const now = new Date();
-    const minNoticeHours = business.settings?.min_notice_hours ?? 0;
-    const maxFutureDays = business.settings?.max_future_days ?? 365;
-    if (!isTeam && isBefore(slotStart, addMinutes(now, Math.round(minNoticeHours * 60)))) {
-      return NextResponse.json({ error: "לא ניתן לקבוע תור למועד זה" }, { status: 400 });
+    const limits = bookingWindow(business);
+    if (!isTeam && isBefore(slotStart, limits.earliest)) {
+      return NextResponse.json({ error: "השעה הזו כבר קרובה מדי. אנא בחרו שעה אחרת." }, { status: 400 });
     }
-    if (!isTeam && isAfter(slotStart, addDays(now, maxFutureDays))) {
+    if (!isTeam && isAfter(slotStart, limits.latest)) {
       return NextResponse.json({ error: "לא ניתן לקבוע תור רחוק כל כך קדימה" }, { status: 400 });
     }
+
+    // Everything the checks below need: the booked month with a week either side
+    // (day/week/month limits) and every later appointment. Never the whole history.
+    const existing = await getAppointments(
+      business_id,
+      new Date(Math.min(Date.now(), subDays(startOfMonth(inIsrael(slotStart)), 8).getTime())).toISOString()
+    );
 
     // The requested start must be one of the slots the business actually offers
     // (working hours, lunch break, closures, past times) in Israel time.
@@ -168,7 +183,7 @@ export async function POST(request: NextRequest) {
       business,
       service,
       selectedDate: parseISO(israelDateString(slotStart)),
-      existingAppointments: await getAppointments(business_id),
+      existingAppointments: existing,
       stepMinutes: business.slot_interval_minutes || 15,
     });
     // (the business team may deliberately book outside the offered grid; collisions are still blocked)
@@ -183,7 +198,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Double-booking check (the DB exclusion constraint is the hard guarantee)
-    const existing = await getAppointments(business_id);
     const collision = existing.some((app) => {
       if (app.status === "cancelled") return false;
       const appStart = parseISO(app.start_time);
@@ -222,21 +236,21 @@ export async function POST(request: NextRequest) {
     const dayLimit = isTeam ? null : tooMuch(
       business.settings?.max_appointments_per_day ?? 0,
       "ליום אחד",
-      clientActiveAppointments.filter((a) => isSameDay(parseISO(a.start_time), slotStart)).length
+      clientActiveAppointments.filter((a) => isSameDay(inIsrael(a.start_time), inIsrael(slotStart))).length
     );
     if (dayLimit) return dayLimit;
     const weekLimit = isTeam ? null : tooMuch(
       business.settings?.max_appointments_per_week ?? 0,
       "לשבוע אחד",
       clientActiveAppointments.filter((a) =>
-        isSameWeek(parseISO(a.start_time), slotStart, { weekStartsOn: 0 })
+        isSameWeek(inIsrael(a.start_time), inIsrael(slotStart), { weekStartsOn: 0 })
       ).length
     );
     if (weekLimit) return weekLimit;
     const monthLimit = isTeam ? null : tooMuch(
       business.settings?.max_appointments_per_month ?? 0,
       "לחודש",
-      clientActiveAppointments.filter((a) => isSameMonth(parseISO(a.start_time), slotStart)).length
+      clientActiveAppointments.filter((a) => isSameMonth(inIsrael(a.start_time), inIsrael(slotStart))).length
     );
     if (monthLimit) return monthLimit;
 
@@ -292,7 +306,6 @@ export async function POST(request: NextRequest) {
           ? { name: appointment.business.name, slug: appointment.business.slug }
           : undefined,
       },
-      client: { first_name: client.first_name, last_name: client.last_name, email: client.email },
     });
   } catch (error: unknown) {
     // 23P01 = exclusion_violation: someone booked the same slot a moment earlier.
