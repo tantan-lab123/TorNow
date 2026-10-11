@@ -264,7 +264,7 @@ function PushBanner({ on }: { on: boolean }) {
     <div
       aria-hidden={!on}
       data-on={on}
-      className="l-banner absolute inset-x-[3.5%] top-[1.6%] z-10 flex gap-[2.8cqw] rounded-[5cqw] border border-ink-200 bg-white/95 p-[3.2cqw] text-right shadow-[0_14px_30px_-14px_rgba(22,25,31,0.5)] backdrop-blur-md"
+      className="l-banner absolute inset-x-[3.5%] top-[1.6%] z-10 flex gap-[2.8cqw] rounded-[5cqw] border border-ink-200 bg-white/95 p-[3.2cqw] text-right shadow-[0_14px_30px_-14px_rgba(23,32,26,0.5)] backdrop-blur-md"
     >
       <span className="h-[9cqw] w-[9cqw] flex-none [&>svg]:h-full [&>svg]:w-full">
         <LogoMark size={32} />

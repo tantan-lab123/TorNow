@@ -1,7 +1,7 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 
-/** The Torli mark: a "take a number" ticket with a perforation and an accent dot. */
+/** The Torli mark: a "take a number" ticket with a perforation and a lime dot. */
 export function LogoMark({ size = 32, className }: { size?: number; className?: string }) {
   return (
     <svg
@@ -13,10 +13,10 @@ export function LogoMark({ size = 32, className }: { size?: number; className?: 
     >
       <path
         d="M5 6h22a3 3 0 0 1 3 3v3a4 4 0 0 0 0 8v3a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3v-3a4 4 0 0 0 0-8V9a3 3 0 0 1 3-3z"
-        fill="#0D52E6"
+        fill="#1E4D36"
       />
-      <path d="M11.5 9.5v13" stroke="#FFD84A" strokeWidth="1.6" strokeLinecap="round" strokeDasharray="0.1 3.2" />
-      <circle cx="20.5" cy="16" r="3.4" fill="#FFD84A" />
+      <path d="M11.5 9.5v13" stroke="#CFEA6E" strokeWidth="1.6" strokeLinecap="round" strokeDasharray="0.1 3.2" />
+      <circle cx="20.5" cy="16" r="3.4" fill="#CFEA6E" />
     </svg>
   );
 }

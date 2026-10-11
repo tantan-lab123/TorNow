@@ -25,7 +25,7 @@ const ITEMS: Item[] = [
   { who: "אבי", color: "#2F6B4B", at: "07:58", text: "היי, יש לך משהו מחר בבוקר?", done: "קבע תור לבד", when: "מחר · 09:30", tilt: -2.6, x: 12, y: 3 },
   { who: "שירן", color: "#7A3B69", at: "08:12", text: "אפשר להזיז את התור שלי לחמישי?", done: "העבירה את התור לבד", when: "חמישי · 16:00", tilt: 1.9, x: -14, y: -2 },
   { who: "דנה", color: "#B4532A", at: "08:47", text: "כמה עולה טיפול? יש מקום השבוע?", done: "ראתה מחירון וקבעה", when: "ראשון · 12:15", tilt: -1.4, x: 6, y: 5 },
-  { who: "רועי", color: "#0D52E6", at: "09:20", text: "שכחתי מתי קבענו, תזכיר לי?", done: "הוסיף את התור ליומן שלו", when: "שני · 18:00", tilt: 2.7, x: -9, y: -3 },
+  { who: "רועי", color: "#1E4D36", at: "09:20", text: "שכחתי מתי קבענו, תזכיר לי?", done: "הוסיף את התור ליומן שלו", when: "שני · 18:00", tilt: 2.7, x: -9, y: -3 },
   { who: "ליאת", color: "#A56F06", at: "09:41", text: "משהו קפץ לי, אפשר לבטל להיום?", done: "ביטלה לבד, והשעה התפנתה", when: "היום · 14:00", cancelled: true, tilt: -2, x: 14, y: 2 },
 ];
 
@@ -73,7 +73,7 @@ export function ChaosToOrder() {
       <div
         role="group"
         aria-label="להשוות בין העבודה בלי Torli לעבודה עם Torli"
-        className="relative grid w-full max-w-[340px] grid-cols-2 rounded-[10px] border border-brand-500/60 bg-brand-950 p-1"
+        className="relative grid w-full max-w-[340px] grid-cols-2 rounded-[10px] border border-brand-500/70 bg-brand-800 p-1"
       >
         <span
           aria-hidden="true"
@@ -139,7 +139,7 @@ export function ChaosToOrder() {
                 <div
                   aria-hidden={order}
                   className={cn(
-                    "l-face absolute inset-0 flex items-center gap-3 rounded-[12px] border border-ink-200 bg-white px-3 shadow-[0_10px_22px_-14px_rgba(22,25,31,0.45)]",
+                    "l-face absolute inset-0 flex items-center gap-3 rounded-[12px] border border-ink-200 bg-white px-3 shadow-[0_10px_22px_-14px_rgba(23,32,26,0.45)]",
                     order && "opacity-0"
                   )}
                 >
