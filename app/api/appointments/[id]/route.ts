@@ -7,8 +7,7 @@ import {
   setAppointmentStaff,
   updateAppointmentStatus,
 } from "@/lib/db";
-import { getSessionBusinessId } from "@/lib/auth";
-import { requireRole, ANY_ROLE } from "@/lib/access";
+import { getValidSession, requireRole, ANY_ROLE } from "@/lib/access";
 import { clientIp, rateLimit, tooMany } from "@/lib/rateLimit";
 import { customerChangePolicy } from "@/lib/booking/policy";
 import { israelDateString } from "@/lib/booking/slotGenerator";
@@ -85,7 +84,7 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
     const existing = await getAppointmentById(params.id);
     if (!existing) return NextResponse.json({ error: "התור לא נמצא" }, { status: 404 });
 
-    const teamId = getSessionBusinessId(request);
+    const teamId = (await getValidSession(request))?.businessId ?? null;
     const isTeam = teamId !== null && teamId === existing.business_id;
 
     // Anything beyond a customer's own cancellation needs a logged-in member of this business.

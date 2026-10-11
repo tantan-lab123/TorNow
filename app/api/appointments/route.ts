@@ -23,8 +23,8 @@ import {
   subDays,
 } from "date-fns";
 import { after } from "next/server";
-import { forbidden, getSessionBusinessId, verifyGoogleAccessToken } from "@/lib/auth";
-import { requireRole, ANY_ROLE } from "@/lib/access";
+import { forbidden, verifyGoogleAccessToken } from "@/lib/auth";
+import { getValidSession, requireRole, ANY_ROLE } from "@/lib/access";
 import { notifyBusiness } from "@/lib/push";
 import { formatHebrewDate, formatTime } from "@/lib/utils";
 import { TZDate } from "@date-fns/tz";
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
 
     // Booking (public customers, or the business team adding one manually)
     const ip = clientIp(request);
-    const teamSessionId = getSessionBusinessId(request);
+    const teamSessionId = (await getValidSession(request))?.businessId ?? null;
     const isTeam = teamSessionId !== null && teamSessionId === body?.business_id;
     if (!isTeam && !rateLimit(`book:ip:${ip}`, 10, 60 * 60 * 1000)) return tooMany();
 

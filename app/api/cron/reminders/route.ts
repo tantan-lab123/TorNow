@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPendingReminders, markReminderSent } from "@/lib/db";
 import { formatHebrewDate, formatTime } from "@/lib/utils";
-import { getSessionBusinessId, unauthorized, verifyBearer } from "@/lib/auth";
+import { unauthorized, verifyBearer } from "@/lib/auth";
+import { getValidSession } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,7 @@ async function handleReminders(request: NextRequest) {
   // and there is no built-in default). Vercel Cron sends this header automatically.
   // A logged-in owner may run the check for their OWN business only.
   const isCron = verifyBearer(request, process.env.CRON_SECRET);
-  const ownerId = isCron ? null : getSessionBusinessId(request);
+  const ownerId = isCron ? null : ((await getValidSession(request))?.businessId ?? null);
   if (!isCron && !ownerId) return unauthorized();
 
   try {

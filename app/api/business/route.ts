@@ -10,7 +10,6 @@ import {
 import { validatePassword, generateRandomSlug } from "@/lib/utils";
 import {
   forbidden,
-  getSession,
   setSessionCookie,
   clearSessionCookie,
   toOwnerBusiness,
@@ -19,7 +18,7 @@ import {
 } from "@/lib/auth";
 import { isPasswordPwned, PWNED_ERROR } from "@/lib/pwned";
 import { clientIp, rateLimit, tooMany } from "@/lib/rateLimit";
-import { requireRole, MANAGEMENT, OWNER_ONLY } from "@/lib/access";
+import { forgetCredentialCache, getValidSession, requireRole, MANAGEMENT, OWNER_ONLY } from "@/lib/access";
 import { sanitizeDateOverrides, sanitizeSettings, sanitizeWorkingHours } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
@@ -47,7 +46,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Logged-in users of this business get their full view (calendar token only for owner/manager).
-  const session = getSession(request);
+  const session = await getValidSession(request);
   if (session?.businessId === business.id) {
     return NextResponse.json(toOwnerBusiness(business, session.role));
   }
@@ -136,7 +135,13 @@ export async function PATCH(request: NextRequest) {
     if (!updated) {
       return NextResponse.json({ error: "עסק לא נמצא" }, { status: 404 });
     }
-    return NextResponse.json(toOwnerBusiness(updated, auth.session.role));
+    const res = NextResponse.json(toOwnerBusiness(updated, auth.session.role));
+    if (password) {
+      // every other device is signed out; this one gets a session for the new password
+      forgetCredentialCache(businessId);
+      setSessionCookie(res, businessId, "owner", undefined, updated.password);
+    }
+    return res;
   } catch (error) {
     console.error("Error updating business:", error);
     return NextResponse.json({ error: "שגיאה בעדכון פרטי העסק" }, { status: 500 });
@@ -213,7 +218,7 @@ export async function POST(request: NextRequest) {
     });
 
     const res = NextResponse.json({ success: true, business: toOwnerBusiness(newBusiness) });
-    setSessionCookie(res, newBusiness.id);
+    setSessionCookie(res, newBusiness.id, "owner", undefined, newBusiness.password);
     return res;
   } catch (error) {
     console.error("Error creating business:", error);
