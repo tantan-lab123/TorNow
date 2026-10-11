@@ -15,8 +15,8 @@ import {
 import { Appointment, Service, Client } from "@/lib/types";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { triggerHaptic } from "@/lib/utils";
-import { isSameDay, subDays, isAfter, format } from "date-fns";
+import { isBlockedTime, triggerHaptic } from "@/lib/utils";
+import { isSameDay, isSameMonth, subDays, isAfter, format } from "date-fns";
 
 interface StatsSectionProps {
   appointments: Appointment[];
@@ -33,10 +33,11 @@ export const StatsSection: React.FC<StatsSectionProps> = ({
 
   const today = useMemo(() => new Date(), []);
 
-  // Filtered appointments based on timeframe
+  // Filtered appointments based on timeframe (time the business blocked for itself is not a booking)
   const filteredAppointments = useMemo(() => {
+    const bookings = appointments.filter((a) => !isBlockedTime(a));
     if (timeframe === "today") {
-      return appointments.filter((a) => {
+      return bookings.filter((a) => {
         try {
           return isSameDay(new Date(a.start_time), today);
         } catch {
@@ -46,18 +47,16 @@ export const StatsSection: React.FC<StatsSectionProps> = ({
     }
 
     if (timeframe === "week") {
+      // the last 7 days up to now, not every future booking
       const weekAgo = subDays(today, 7);
-      return appointments.filter((a) => {
-        try {
-          return isAfter(new Date(a.start_time), weekAgo);
-        } catch {
-          return false;
-        }
+      return bookings.filter((a) => {
+        const start = new Date(a.start_time);
+        return isAfter(start, weekAgo) && !isAfter(start, today);
       });
     }
 
-    // Default month: all current appointments
-    return appointments;
+    // This calendar month (the admin may hold older and later appointments too)
+    return bookings.filter((a) => isSameMonth(new Date(a.start_time), today));
   }, [appointments, timeframe, today]);
 
   // Compute metrics
@@ -210,7 +209,11 @@ export const StatsSection: React.FC<StatsSectionProps> = ({
           </div>
           <div className="text-2xl font-black text-slate-900 font-mono">{stats.confirmedCount}</div>
           <div className="text-xs text-slate-500 mt-0.5 font-medium">
-            {timeframe === "today" ? "תורים מאושרים להיום" : "תורים מאושרים שהתקיימו"}
+            {timeframe === "today"
+              ? "תורים מאושרים להיום"
+              : timeframe === "week"
+                ? "תורים מאושרים שהתקיימו"
+                : "תורים מאושרים החודש"}
           </div>
         </Card>
 
@@ -244,7 +247,7 @@ export const StatsSection: React.FC<StatsSectionProps> = ({
           </div>
           <div className="text-2xl font-black text-slate-900 font-mono">{stats.cancelledCount}</div>
           <div className="text-xs text-slate-500 mt-0.5 font-medium">
-            {timeframe === "today" ? "תורים שבוטלו היום" : "תורים שבוטלו ע\"י לקוחות"}
+            {timeframe === "today" ? "תורים שבוטלו היום" : "תורים שבוטלו בתקופה"}
           </div>
         </Card>
       </div>

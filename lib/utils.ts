@@ -243,6 +243,15 @@ export function wazeUrl(address: string): string {
   return `https://waze.com/ul?q=${encodeURIComponent(address)}&navigate=yes`;
 }
 
+/** Time the business blocked for itself is stored as an appointment with no service. */
+export const BLOCK_NOTE_PREFIX = "[זמן חסום]";
+/** The placeholder client those blocks are attached to (never a real customer). */
+export const BLOCK_CLIENT_PHONE = "0000000000";
+
+export function isBlockedTime(app: { service_id?: string | null; notes?: string | null }): boolean {
+  return !app.service_id && !!app.notes?.startsWith(BLOCK_NOTE_PREFIX);
+}
+
 /**
  * Trigger subtle haptic vibration if supported on mobile
  */
