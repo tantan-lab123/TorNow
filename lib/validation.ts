@@ -69,6 +69,23 @@ export function sanitizeSettings(raw: unknown): BusinessSettings {
   return Object.fromEntries(Object.entries(out).filter(([, v]) => v !== undefined)) as BusinessSettings;
 }
 
+// The settings screen used to pre-fill these and save them without the owner typing them.
+const LEGACY_PREFILLS: Partial<Record<keyof BusinessSettings, string>> = {
+  address: "רוטשילד 15, תל אביב",
+  post_booking_message: "נא להגיע 5 דקות לפני המועד שנקבע. חניה נוחה בכחול לבן ברחוב.",
+};
+
+/** Hide pre-filled sample values that were saved by accident, so customers never see them. */
+export function dropLegacyPrefills(settings: BusinessSettings | undefined): BusinessSettings | undefined {
+  if (!settings) return settings;
+  const out = { ...settings };
+  for (const [key, sample] of Object.entries(LEGACY_PREFILLS)) {
+    const k = key as keyof BusinessSettings;
+    if (typeof out[k] === "string" && (out[k] as string).trim() === sample) delete out[k];
+  }
+  return out;
+}
+
 export function sanitizeWorkingHours(raw: unknown): WorkingHours | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, any>;

@@ -61,6 +61,9 @@ export const ADMIN_NAV_ITEMS: {
   { id: "settings", label: "הגדרות", icon: Settings },
 ];
 
+// Sections that still show sample data only; hidden until they work for real.
+export const HIDDEN_TABS: AdminTab[] = ["products", "marketing", "cashregister"];
+
 // Phone tab bar: two tabs on each side of the center "new appointment" button (AdminFAB).
 const BAR_START: AdminTab[] = ["calendar", "customers"];
 const BAR_END: AdminTab[] = ["stats"];
@@ -77,7 +80,7 @@ export const AdminTopBar: React.FC<AdminTopBarProps> = ({
 
   // The server enforces permissions; this just hides what the person cannot use.
   const items = ADMIN_NAV_ITEMS.filter((i) => {
-    if (i.id === "products") return false;
+    if (HIDDEN_TABS.includes(i.id)) return false;
     if (role === "staff") return i.id === "calendar" || i.id === "customers";
     if (role === "manager") return i.id !== "employees";
     return true;

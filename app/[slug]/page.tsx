@@ -13,6 +13,8 @@ import {
   AlertCircle,
   ExternalLink,
   MessageCircle,
+  MapPin,
+  Send,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { Business, Service, TimeSlot, Appointment } from "@/lib/types";
@@ -33,6 +35,7 @@ import {
   getHebrewDayLetter,
   validatePhoneNumber,
   toInternationalPhone,
+  wazeUrl,
 } from "@/lib/utils";
 import {
   addMonths,
@@ -612,6 +615,29 @@ export default function BookingPage() {
     );
   }
 
+  const address = business.settings?.address?.trim() || "";
+  const cutoffHours = business.settings?.cancellation_cutoff_hours ?? 6;
+  const changePolicy =
+    cutoffHours > 0
+      ? `אפשר לבטל או לשנות את התור עד ${cutoffHours} שעות לפני המועד.`
+      : "אפשר לבטל או לשנות את התור עד מועד התור.";
+  const confirmed = confirmedAppointment
+    ? (() => {
+        const serviceName = confirmedAppointment.service?.name || selectedService?.name || "";
+        const time = format(new Date(confirmedAppointment.start_time), "HH:mm");
+        const date = formatHebrewDate(confirmedAppointment.start_time);
+        const origin = typeof window !== "undefined" ? window.location.origin : "";
+        const cancelUrl = `${origin}/cancel/${confirmedAppointment.id}`;
+        const title = `תור ל${serviceName} ב${business.name}`;
+        const details = [
+          ...(address ? [`כתובת: ${address}`, `ניווט: ${wazeUrl(address)}`] : []),
+          `לביטול או שינוי: ${cancelUrl}`,
+        ];
+        const shareText = [`התור שלי ב${business.name}`, `${serviceName}, ${date} בשעה ${time}`, ...details].join("\n");
+        return { title, cancelUrl, shareText, calendarText: details.join("\n") };
+      })()
+    : null;
+
   return (
     <div className="min-h-screen bg-paper text-ink-900 pb-24 md:pb-12">
       {/* Mobile App Bar / Header */}
@@ -637,10 +663,22 @@ export default function BookingPage() {
               <h1 className="font-bold text-base text-slate-900 leading-tight">
                 {business.name}
               </h1>
-              <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                <span className="inline-block w-2 h-2 rounded-full bg-success-500" />
-                <span>פתוח להזמנת תורים</span>
-              </div>
+              {address ? (
+                <a
+                  href={wazeUrl(address)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-xs text-slate-500 underline-offset-2 hover:underline"
+                >
+                  <MapPin className="w-3.5 h-3.5 flex-none" />
+                  <span className="truncate max-w-[180px]">{address}</span>
+                </a>
+              ) : (
+                <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                  <span className="inline-block w-2 h-2 rounded-full bg-success-500" />
+                  <span>פתוח להזמנת תורים</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1367,7 +1405,7 @@ export default function BookingPage() {
                       ? "✓ מספר טלפון תקין (10 ספרות)"
                       : phone.replace(/\D/g, "").length > 0
                       ? `יש להזין בדיוק 10 ספרות (${phone.replace(/\D/g, "").length}/10)`
-                      : "הזן 10 ספרות לקבלת אישור ותזכורת בוואטסאפ"
+                      : "10 ספרות, כדי שהעסק יוכל ליצור קשר לגבי התור"
                   }
                 />
                 {isClientLookupLoading && (
@@ -1408,7 +1446,6 @@ export default function BookingPage() {
                 dir="ltr"
                 value={clientEmail}
                 onChange={(e) => setClientEmail(e.target.value)}
-                helperText="לשליחת אישור זימון תור וזימון יומן למייל"
               />
 
               {/* Optional Notes */}
@@ -1473,6 +1510,7 @@ export default function BookingPage() {
                     ₪{selectedService?.price}
                   </span>
                 </div>
+                <p className="text-xs text-slate-500 pt-1">{changePolicy}</p>
               </Card>
 
               <StickyFooter>
@@ -1517,7 +1555,7 @@ export default function BookingPage() {
             <div>
               <h2 className="text-2xl font-extrabold text-ink-900">התור נקבע</h2>
               <p className="text-sm text-slate-500 mt-1">
-                נשלח אליך אישור ותזכורת לפני מועד התור
+                שמרו את התור בוואטסאפ או ביומן. שם יש גם קישור לביטול או לשינוי.
               </p>
             </div>
 
@@ -1552,6 +1590,19 @@ export default function BookingPage() {
                     {confirmedAppointment.client?.last_name || lastName}
                   </span>
                 </div>
+                {address && (
+                  <div className="flex justify-between items-center gap-3">
+                    <span className="text-slate-500 flex-none">כתובת:</span>
+                    <a
+                      href={wazeUrl(address)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-bold text-slate-900 underline underline-offset-2 text-left"
+                    >
+                      {address}
+                    </a>
+                  </div>
+                )}
                 <div className="flex justify-between items-center">
                   <span className="text-slate-500">מחיר לתשלום במקום:</span>
                   <span className="font-bold text-slate-900">
@@ -1617,37 +1668,50 @@ export default function BookingPage() {
               </Card>
             )}
 
-            {/* Action Buttons: Add to Google Calendar & Apple/ICS & WhatsApp */}
+            {/* Take the booking home: WhatsApp to self and calendar files carry the cancel link */}
             <div className="space-y-2.5">
               <a
-                href={generateGoogleCalendarUrl({
-                  title: `תור ל${confirmedAppointment.service?.name || selectedService?.name} ב${business.name}`,
-                  description: `נקבע תור דרך המערכת עבור ${firstName} ${lastName}`,
-                  startTime: confirmedAppointment.start_time,
-                  endTime: confirmedAppointment.end_time,
-                  location: business.name,
-                })}
+                href={`https://wa.me/?text=${encodeURIComponent(confirmed?.shareText || "")}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="m-key w-full flex items-center justify-center gap-2 h-[52px] rounded-lg bg-brand-600 text-white font-bold"
               >
-                <CalendarPlus className="w-5 h-5 text-lime" />
-                <span>הוסף ליומן Google</span>
+                <Send className="w-5 h-5 text-lime" />
+                <span>שליחה לעצמי בוואטסאפ</span>
+              </a>
+
+              <a
+                href={generateGoogleCalendarUrl({
+                  title: confirmed?.title || "",
+                  description: confirmed?.calendarText || "",
+                  startTime: confirmedAppointment.start_time,
+                  endTime: confirmedAppointment.end_time,
+                  location: address || business.name,
+                })}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="m-key2 w-full flex items-center justify-center gap-2 h-12 rounded-lg border border-ink-200 bg-white text-ink-900 font-semibold text-sm"
+              >
+                <CalendarPlus className="w-4 h-4 text-ink-600" />
+                <span>הוספה ליומן Google</span>
               </a>
 
               <a
                 href={generateIcsDataUrl({
-                  title: `תור ל${confirmedAppointment.service?.name || selectedService?.name} ב${business.name}`,
-                  description: `נקבע תור דרך המערכת עבור ${firstName} ${lastName}`,
+                  title: confirmed?.title || "",
+                  description: confirmed?.calendarText || "",
                   startTime: confirmedAppointment.start_time,
                   endTime: confirmedAppointment.end_time,
-                  location: business.name,
+                  location: address || business.name,
+                  uid: confirmedAppointment.id,
+                  url: confirmed?.cancelUrl,
+                  alarmsMinutesBefore: [24 * 60, 120],
                 })}
                 download="appointment.ics"
                 className="m-key2 w-full flex items-center justify-center gap-2 h-12 rounded-lg border border-ink-200 bg-white text-ink-900 font-semibold text-sm"
               >
                 <CalendarIcon className="w-4 h-4 text-ink-600" />
-                <span>הוספה ליומן של אייפון או Outlook</span>
+                <span>הוספה ליומן של אייפון או Outlook, עם תזכורת</span>
               </a>
 
               {/* Direct WhatsApp Chat with Business Owner */}
@@ -1676,13 +1740,13 @@ export default function BookingPage() {
             {/* Unique Cancellation Link as Required */}
             <div className="pt-4 border-t border-slate-200 text-right">
               <span className="text-xs text-slate-500 block mb-1">
-                רוצה לבטל או לשנות את מועד התור?
+                {changePolicy}
               </span>
               <a
                 href={`/cancel/${confirmedAppointment.id}`}
                 className="inline-flex items-center gap-1.5 min-h-[44px] text-sm font-bold text-danger-600 underline"
               >
-                <span>קישור ישיר לביטול התור</span>
+                <span>ביטול או שינוי התור</span>
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
             </div>

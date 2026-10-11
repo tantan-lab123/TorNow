@@ -488,6 +488,7 @@ export const CustomersSection: React.FC<CustomersSectionProps> = ({
                   const s = services.find((srv) => srv.id === app.service_id) || app.service;
                   const date = new Date(app.start_time);
                   const isCancelled = app.status === "cancelled";
+                  const isUpcoming = !isCancelled && date.getTime() > Date.now();
 
                   return (
                     <div
@@ -495,14 +496,14 @@ export const CustomersSection: React.FC<CustomersSectionProps> = ({
                       className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 bg-white text-xs"
                     >
                       <div className="flex items-center gap-2">
-                        <Badge variant={isCancelled ? "destructive" : "success"}>
-                          {isCancelled ? "בוטל" : "התקיים"}
+                        <Badge variant={isCancelled ? "destructive" : isUpcoming ? "default" : "success"}>
+                          {isCancelled ? "בוטל" : isUpcoming ? "עתידי" : "התקיים"}
                         </Badge>
                         <span className="font-bold text-slate-700">₪{s?.price || 0}</span>
-                        {!isCancelled && selectedClient.phone && (
+                        {isUpcoming && selectedClient.phone && (
                           <a
                             href={`https://wa.me/${toInternationalPhone(selectedClient.phone)}?text=${encodeURIComponent(
-                              `היי ${selectedClient.first_name}, תזכורת לתור שלך ל${s?.name || "טיפול"} ב-${formatHebrewDate(date)} בשעה ${formatTime(date)}.`
+                              `היי ${selectedClient.first_name}, תזכורת לתור שלך ל${s?.name || "טיפול"} ב-${formatHebrewDate(date)} בשעה ${formatTime(date)}.\nלביטול או שינוי: ${window.location.origin}/cancel/${app.id}`
                             )}`}
                             target="_blank"
                             rel="noopener noreferrer"

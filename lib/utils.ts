@@ -150,8 +150,37 @@ export function generateGoogleCalendarUrl({
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
+/** Escape a TEXT value for an .ics file (RFC 5545 3.3.11). */
+function escapeIcsText(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+}
+
+/** Fold an .ics content line at 75 octets without splitting a multi-byte character (RFC 5545 3.1). */
+function foldIcsLine(line: string): string {
+  const encoder = new TextEncoder();
+  if (encoder.encode(line).length <= 75) return line;
+  const parts: string[] = [];
+  let current = "";
+  let bytes = 0;
+  let limit = 75;
+  for (const ch of line) {
+    const size = encoder.encode(ch).length;
+    if (bytes + size > limit) {
+      parts.push(current);
+      current = "";
+      bytes = 0;
+      limit = 74; // continuation lines start with a space
+    }
+    current += ch;
+    bytes += size;
+  }
+  parts.push(current);
+  return parts.join("\r\n ");
+}
+
 /**
- * Generate an .ics iCalendar file content data URL for download
+ * Generate an .ics iCalendar file content data URL for download.
+ * `alarmsMinutesBefore` adds a reminder per entry (e.g. [1440, 120] = a day and two hours before).
  */
 export function generateIcsDataUrl({
   title,
@@ -159,12 +188,18 @@ export function generateIcsDataUrl({
   startTime,
   endTime,
   location,
+  uid,
+  url,
+  alarmsMinutesBefore = [],
 }: {
   title: string;
   description: string;
   startTime: string | Date;
   endTime: string | Date;
   location?: string;
+  uid?: string;
+  url?: string;
+  alarmsMinutesBefore?: number[];
 }): string {
   const start = typeof startTime === "string" ? parseISO(startTime) : startTime;
   const end = typeof endTime === "string" ? parseISO(endTime) : endTime;
@@ -174,23 +209,38 @@ export function generateIcsDataUrl({
   const icsContent = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//SaaS Appointment Scheduler//HE",
+    "PRODID:-//Torli//HE",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",
-    `SUMMARY:${title}`,
-    `DESCRIPTION:${description}`,
+    `SUMMARY:${escapeIcsText(title)}`,
+    `DESCRIPTION:${escapeIcsText(description)}`,
     `DTSTART:${formatDateToIcs(start)}`,
     `DTEND:${formatDateToIcs(end)}`,
     `DTSTAMP:${formatDateToIcs(new Date())}`,
-    `UID:${Date.now()}@schedule.app`,
-    ...(location ? [`LOCATION:${location}`] : []),
+    `UID:${uid || Date.now()}@torli`,
+    ...(location ? [`LOCATION:${escapeIcsText(location)}`] : []),
+    ...(url ? [`URL:${url}`] : []),
     "STATUS:CONFIRMED",
+    ...alarmsMinutesBefore.flatMap((minutes) => [
+      "BEGIN:VALARM",
+      "ACTION:DISPLAY",
+      `DESCRIPTION:${escapeIcsText(title)}`,
+      `TRIGGER:-PT${Math.round(minutes)}M`,
+      "END:VALARM",
+    ]),
     "END:VEVENT",
     "END:VCALENDAR",
-  ].join("\r\n");
+  ]
+    .map(foldIcsLine)
+    .join("\r\n");
 
   return `data:text/calendar;charset=utf8,${encodeURIComponent(icsContent)}`;
+}
+
+/** Waze navigation link for a street address. */
+export function wazeUrl(address: string): string {
+  return `https://waze.com/ul?q=${encodeURIComponent(address)}&navigate=yes`;
 }
 
 /**
