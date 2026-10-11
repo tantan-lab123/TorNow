@@ -580,23 +580,36 @@ export async function findOrCreateClient(
 // APPOINTMENTS
 // ==============================================================================
 
+// Supabase returns at most this many rows per request, so longer lists are read in pages.
+const PAGE_SIZE = 1000;
+
+/**
+ * Appointments of one business, oldest first, with their service and client.
+ * Pass a range wherever possible: without one this reads the whole history.
+ * (The business row is not embedded: its settings can hold large images.)
+ */
 export async function getAppointments(
   businessId: string,
   startDate?: string,
   endDate?: string
 ): Promise<Appointment[]> {
   if (isSupabaseConfigured && supabaseAdmin) {
-    let query = supabaseAdmin!
-      .from("appointments")
-      .select("*, service:services(*), client:clients(*), business:businesses(id,slug,name,owner_phone,working_hours,created_at)")
-      .eq("business_id", businessId);
-
-    if (startDate) query = query.gte("start_time", startDate);
-    if (endDate) query = query.lte("end_time", endDate);
-
-    const { data, error } = await query.order("start_time", { ascending: true });
-    if (error) throw error;
-    if (data) return data as Appointment[];
+    const rows: Appointment[] = [];
+    for (let from = 0; ; from += PAGE_SIZE) {
+      let query = supabaseAdmin!
+        .from("appointments")
+        .select("*, service:services(*), client:clients(*)")
+        .eq("business_id", businessId);
+      if (startDate) query = query.gte("start_time", startDate);
+      if (endDate) query = query.lte("end_time", endDate);
+      const { data, error } = await query
+        .order("start_time", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+      if (error) throw error;
+      rows.push(...((data ?? []) as Appointment[]));
+      if (!data || data.length < PAGE_SIZE) return rows;
+    }
   }
 
   let apps = db.appointments.filter((a) => a.business_id === businessId);
@@ -612,9 +625,10 @@ export async function getAppointments(
     (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
   );
 
-  return apps.map((a) =>
-    hydrateAppointment(a, db.businesses, db.services, db.clients)
-  );
+  return apps.map((a) => {
+    const { business, ...rest } = hydrateAppointment(a, db.businesses, db.services, db.clients);
+    return rest;
+  });
 }
 
 export async function getAppointmentById(

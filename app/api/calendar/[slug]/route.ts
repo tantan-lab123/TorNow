@@ -34,7 +34,9 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ slug: s
       return new NextResponse("Not found", { status: 404 });
     }
 
-    const appointments = await getAppointments(business.id);
+    // The feed carries the last month and everything ahead, not the whole history
+    const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+    const appointments = await getAppointments(business.id, since);
     const confirmedApps = appointments.filter((a: Appointment) => a.status === "confirmed");
     const nowIcs = toIcsDate(new Date().toISOString());
 

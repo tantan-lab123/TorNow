@@ -620,12 +620,18 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Load services & appointments for selected business with polling detection
+  // Load services & appointments for selected business with polling detection.
+  // The full book loads once; a poll re-reads only from yesterday on (new bookings,
+  // moves and cancellations all land there) and merges it in.
   const fetchAppointments = useCallback(
     async (isPolling = false) => {
       if (!selectedBusiness) return;
       try {
-        const aRes = await fetch(`/api/appointments?business_id=${selectedBusiness.id}`);
+        const since = isPolling ? Date.now() - 24 * 3600 * 1000 : null;
+        const aRes = await fetch(
+          `/api/appointments?business_id=${selectedBusiness.id}` +
+            (since ? `&start_date=${encodeURIComponent(new Date(since).toISOString())}` : "")
+        );
         if (aRes.ok) {
           const aList: Appointment[] = await aRes.json();
 
@@ -657,8 +663,13 @@ export default function AdminDashboardPage() {
           // Update known IDs Set
           aList.forEach((a) => knownAppointmentIdsRef.current.add(a.id));
           isInitialLoadRef.current = false;
-          setAppointments(aList);
+          setAppointments((prev) =>
+            since === null
+              ? aList
+              : [...prev.filter((a) => new Date(a.start_time).getTime() < since), ...aList]
+          );
         }
+        if (isPolling) return;
 
         const sRes = await fetch(`/api/services?business_id=${selectedBusiness.id}`);
         if (sRes.ok) {
@@ -681,13 +692,19 @@ export default function AdminDashboardPage() {
     }
   }, [selectedBusiness, fetchAppointments]);
 
-  // Background auto-polling every 15 seconds to catch new client bookings
+  // Background polling every 15 seconds to catch new client bookings, only while the
+  // screen is in front of the owner; coming back to it refreshes at once.
   useEffect(() => {
     if (!selectedBusiness) return;
-    const intervalId = setInterval(() => {
-      fetchAppointments(true);
-    }, 15000);
-    return () => clearInterval(intervalId);
+    const poll = () => {
+      if (document.visibilityState === "visible") fetchAppointments(true);
+    };
+    const intervalId = setInterval(poll, 15000);
+    document.addEventListener("visibilitychange", poll);
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", poll);
+    };
   }, [selectedBusiness, fetchAppointments]);
 
   // Team members come from the server (per business, with roles)

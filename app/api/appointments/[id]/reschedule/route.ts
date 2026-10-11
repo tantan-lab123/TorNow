@@ -59,8 +59,16 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ id: st
     const service = services.find((s) => s.id === appt.service_id);
     if (!service) return NextResponse.json({ error: "שירות לא נמצא" }, { status: 404 });
 
-    // The slot must be offered (ignoring this appointment itself, so a small shift is possible)
-    const others = (await getAppointments(appt.business_id)).filter((a) => a.id !== appt.id);
+    // The slot must be offered (ignoring this appointment itself, so a small shift is possible).
+    // Only the days around the new time matter for that and for the clash check.
+    const DAY = 24 * 3600 * 1000;
+    const others = (
+      await getAppointments(
+        appt.business_id,
+        new Date(newStart.getTime() - 2 * DAY).toISOString(),
+        new Date(newStart.getTime() + 3 * DAY).toISOString()
+      )
+    ).filter((a) => a.id !== appt.id);
     if (!isTeam) {
       const offered = generateAvailableSlots({
         business,
