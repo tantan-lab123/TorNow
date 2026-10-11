@@ -76,9 +76,13 @@ export function normalizeBusinessRecord(raw: any): Business {
   const slot_interval_minutes =
     raw.slot_interval_minutes || wh._slot_interval_minutes || 15;
   const date_overrides = raw.date_overrides || wh._date_overrides || [];
+  // The _ keys only persist the fields above inside the jsonb column; callers get them
+  // as real fields, so they never ship twice (or unfiltered) in API responses.
+  const { _settings, _slot_interval_minutes, _date_overrides, ...days } = wh;
 
   return {
     ...raw,
+    working_hours: raw.working_hours ? days : raw.working_hours,
     settings,
     slot_interval_minutes,
     date_overrides,
