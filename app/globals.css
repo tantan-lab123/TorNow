@@ -4,38 +4,38 @@
 
 @layer base {
   :root {
-    --background: #F6F7F9;
-    --foreground: #16191F;
-    --card: #FFFFFF;
-    --card-foreground: #16191F;
-    --popover: #FFFFFF;
-    --popover-foreground: #16191F;
-    --primary: #0D52E6;
-    --primary-foreground: #FFFFFF;
-    --secondary: #EEF0F3;
-    --secondary-foreground: #16191F;
-    --muted: #EEF0F3;
-    --muted-foreground: #4E5460;
-    --accent: #FFD84A;
-    --accent-foreground: #3B2C00;
+    --background: #F4F1E8;
+    --foreground: #17201A;
+    --card: #FFFDF9;
+    --card-foreground: #17201A;
+    --popover: #FFFDF9;
+    --popover-foreground: #17201A;
+    --primary: #1E4D36;
+    --primary-foreground: #FFFDF9;
+    --secondary: #EDE9DE;
+    --secondary-foreground: #17201A;
+    --muted: #EDE9DE;
+    --muted-foreground: #4D564F;
+    --accent: #CFEA6E;
+    --accent-foreground: #1A2E12;
     --destructive: #9E3420;
-    --destructive-foreground: #FFFFFF;
-    --border: #E3E6EB;
-    --input: #E3E6EB;
-    --ring: #0D52E6;
+    --destructive-foreground: #FFFDF9;
+    --border: #E2DDCF;
+    --input: #E2DDCF;
+    --ring: #1E4D36;
     --radius: 10px;
     --m-spring: cubic-bezier(.34, 1.56, .64, 1);
     --m-out: cubic-bezier(.2, .8, .2, 1);
   }
 
   :focus-visible {
-    outline: 2px solid #0D52E6;
+    outline: 2px solid #1E4D36;
     outline-offset: 2px;
   }
 
   ::selection {
-    background: #FFD84A;
-    color: #3B2C00;
+    background: #CFEA6E;
+    color: #1A2E12;
   }
 }
 
@@ -67,10 +67,10 @@ body {
 
 /* Frosted bars (sticky headers, bottom navigation) */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 253, 249, 0.92);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid #E3E6EB;
+  border: 1px solid #E2DDCF;
 }
 
 /* Animations */
@@ -95,24 +95,24 @@ a {
 
 /* Primary "key": a hard edge underneath that the button sinks into on press */
 .m-key {
-  box-shadow: 0 3px 0 rgba(8, 26, 71, 0.5);
+  box-shadow: 0 3px 0 rgba(8, 22, 13, 0.42);
   transition: transform 0.14s var(--m-out), box-shadow 0.14s var(--m-out), background-color 0.2s ease-out, color 0.2s ease-out, filter 0.2s ease-out;
 }
 .m-key:active:not(:disabled) {
   transform: translateY(3px);
-  box-shadow: 0 0 0 rgba(8, 26, 71, 0.5);
+  box-shadow: 0 0 0 rgba(8, 22, 13, 0.42);
 }
 .m-key2 {
-  box-shadow: 0 2px 0 #CBD0D8;
+  box-shadow: 0 2px 0 #CFC8B6;
   transition: transform 0.14s var(--m-out), box-shadow 0.14s var(--m-out), background-color 0.2s ease-out, border-color 0.2s ease-out;
 }
 .m-key2:active:not(:disabled) {
   transform: translateY(2px);
-  box-shadow: 0 0 0 #CBD0D8;
+  box-shadow: 0 0 0 #CFC8B6;
 }
 @media (hover: hover) {
   .m-key:hover:not(:disabled) { filter: brightness(1.08); }
-  .m-key2:hover:not(:disabled) { border-color: #9AA1AD; }
+  .m-key2:hover:not(:disabled) { border-color: #A3A89F; }
 }
 
 /* Small press for everything else that is tappable */
@@ -133,10 +133,10 @@ a {
   100% { transform: scale(1); }
 }
 
-/* Success stamp: the button turns to the accent colour and bounces once */
+/* Success stamp: the button turns lime and bounces once */
 .m-stamp {
-  background: #FFD84A !important;
-  color: #3B2C00 !important;
+  background: #CFEA6E !important;
+  color: #1A2E12 !important;
   animation: m-stamp 0.45s var(--m-spring);
 }
 @keyframes m-stamp {
@@ -160,13 +160,13 @@ a {
   height: 18px;
   flex: none;
   border-radius: 50%;
-  border: 2.5px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #FFD84A;
+  border: 2.5px solid rgba(255, 253, 249, 0.3);
+  border-top-color: #CFEA6E;
   animation: m-rot 0.7s linear infinite;
 }
 .m-spin-dark {
-  border-color: rgba(22, 25, 31, 0.18);
-  border-top-color: #0D52E6;
+  border-color: rgba(23, 32, 26, 0.18);
+  border-top-color: #1E4D36;
 }
 @keyframes m-rot { to { transform: rotate(360deg); } }
 
@@ -206,7 +206,7 @@ a {
   height: 16px;
   margin-top: -8px;
   border-radius: 50%;
-  background: var(--notch, #F6F7F9);
+  background: var(--notch, #F4F1E8);
 }
 .m-ticket::before { right: -8px; }
 .m-ticket::after { left: -8px; }
@@ -251,14 +251,14 @@ html:has(.l-page) { scroll-behavior: smooth; }
 @keyframes l-in { from { opacity: 0; transform: translateY(16px); } }
 .l-fade { animation: m-enter 0.4s var(--m-out) backwards; }
 
-/* An accent marker that draws itself behind a word */
+/* A lime marker that draws itself behind a word */
 .l-mark { position: relative; z-index: 0; white-space: nowrap; }
 .l-mark::before {
   content: "";
   position: absolute;
   z-index: -1;
   inset: 0.52em -0.06em 0.02em;
-  background: #FFD84A;
+  background: #CFEA6E;
   transform-origin: right;
   animation: l-mark 0.8s 0.55s var(--m-out) backwards;
 }
@@ -266,7 +266,7 @@ html:has(.l-page) { scroll-behavior: smooth; }
 
 /* Ruled diary page */
 .l-ruled {
-  background-image: linear-gradient(to bottom, rgba(22, 25, 31, 0.09) 1px, transparent 1px);
+  background-image: linear-gradient(to bottom, rgba(23, 32, 26, 0.09) 1px, transparent 1px);
   background-size: 100% 56px;
 }
 .l-fade-y {
@@ -287,8 +287,8 @@ html:has(.l-page) { scroll-behavior: smooth; }
     height: 9px;
     pointer-events: none;
     background:
-      linear-gradient(var(--l-cross, #9AA1AD), var(--l-cross, #9AA1AD)) center / 1px 100% no-repeat,
-      linear-gradient(var(--l-cross, #9AA1AD), var(--l-cross, #9AA1AD)) center / 100% 1px no-repeat;
+      linear-gradient(var(--l-cross, #A3A89F), var(--l-cross, #A3A89F)) center / 1px 100% no-repeat,
+      linear-gradient(var(--l-cross, #A3A89F), var(--l-cross, #A3A89F)) center / 100% 1px no-repeat;
   }
   .l-frame::before { right: -5px; }
   .l-frame::after { left: -5px; }
@@ -306,9 +306,9 @@ html:has(.l-page) { scroll-behavior: smooth; }
   aspect-ratio: 1;
   translate: -50% -50%;
   border-radius: 50%;
-  background: rgba(22, 25, 31, 0.26);
-  border: 2px solid rgba(255, 255, 255, 0.95);
-  box-shadow: 0 0 0 1px rgba(22, 25, 31, 0.18);
+  background: rgba(23, 32, 26, 0.26);
+  border: 2px solid rgba(255, 253, 249, 0.95);
+  box-shadow: 0 0 0 1px rgba(23, 32, 26, 0.18);
   pointer-events: none;
   animation: l-tap 0.75s var(--m-out) both;
 }
@@ -359,7 +359,7 @@ html:has(.l-page) { scroll-behavior: smooth; }
 .l-faq[open] .l-faq-icon { transform: rotate(45deg); }
 .l-faq[open] .l-faq-body { animation: l-in 0.45s var(--m-out) backwards; }
 
-/* Feature cells: an accent rule grows along the top on hover */
+/* Feature cells: a lime rule grows along the top on hover */
 .l-cell::before {
   content: "";
   position: absolute;
@@ -367,7 +367,7 @@ html:has(.l-page) { scroll-behavior: smooth; }
   right: 0;
   left: 0;
   height: 3px;
-  background: #FFD84A;
+  background: #CFEA6E;
   transform: scaleX(0);
   transform-origin: right;
   transition: transform 0.45s var(--m-out);

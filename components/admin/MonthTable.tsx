@@ -23,9 +23,9 @@ import { cn, formatHebrewDate, getHebrewDayLetter, getJewishHolidayOrShabbat } f
 const WEEKDAYS = ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳"];
 
 // Cells sit on the hairline colour (gap-px), so their backgrounds must be opaque.
-const OUTSIDE = "bg-[#F8F9FB]";
+const OUTSIDE = "bg-[#F7F5EE]";
 // Closed days are ruled through, like a blocked day in a paper diary.
-const HATCH = "[background-image:repeating-linear-gradient(135deg,transparent_0_5px,rgba(22,25,31,0.07)_5px_6px)]";
+const HATCH = "[background-image:repeating-linear-gradient(135deg,transparent_0_5px,rgba(23,32,26,0.07)_5px_6px)]";
 const HATCH_DANGER =
   "[background-image:repeating-linear-gradient(135deg,transparent_0_5px,rgba(158,52,32,0.12)_5px_6px)]";
 
@@ -33,7 +33,7 @@ type Closure = { from: Date; to: Date; reason: string };
 
 /**
  * The owner's month as a ruled table: a row per week and a hairline between days. A day
- * with bookings shows how many, closed days are ruled through, and today is in the accent colour.
+ * with bookings shows how many, closed days are ruled through, and today is lime.
  * Tapping a day opens it for viewing, closing or reopening.
  */
 export function MonthTable({
@@ -155,9 +155,9 @@ export function MonthTable({
                   : closedWeekly
                     ? cn("bg-paper hover:bg-ink-100", HATCH)
                     : past
-                      ? "bg-[#FBFCFD] hover:bg-paper"
+                      ? "bg-[#FBFAF5] hover:bg-paper"
                       : "bg-white hover:bg-paper",
-                isSameDay(day, selectedDate) && "shadow-[inset_0_0_0_2px_#0D52E6]"
+                isSameDay(day, selectedDate) && "shadow-[inset_0_0_0_2px_#1E4D36]"
               )}
             >
               <span className="flex items-start justify-between gap-1">

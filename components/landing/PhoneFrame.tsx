@@ -11,7 +11,7 @@ export function PhoneFrame({ children, className }: { children: React.ReactNode;
   return (
     <div
       className={cn(
-        "relative rounded-[44px] bg-ink-900 p-[8px] shadow-[0_40px_70px_-36px_rgba(22,25,31,0.6)] ring-1 ring-ink-950",
+        "relative rounded-[44px] bg-ink-900 p-[8px] shadow-[0_40px_70px_-36px_rgba(23,32,26,0.6)] ring-1 ring-ink-950",
         className
       )}
     >
