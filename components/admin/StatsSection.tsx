@@ -96,7 +96,7 @@ export const StatsSection: React.FC<StatsSectionProps> = ({
 
     const confirmationRate = filteredAppointments.length
       ? Math.round((confirmed.length / filteredAppointments.length) * 100)
-      : 100;
+      : null; // nothing booked yet: no rate to show
 
     return {
       totalAppointments: filteredAppointments.length,
@@ -203,9 +203,11 @@ export const StatsSection: React.FC<StatsSectionProps> = ({
             <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
               <CalendarCheck className="w-5 h-5" />
             </div>
-            <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">
-              {stats.confirmationRate}% הצלחה
-            </span>
+            {stats.confirmationRate !== null && (
+              <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">
+                {stats.confirmationRate}% הצלחה
+              </span>
+            )}
           </div>
           <div className="text-2xl font-black text-slate-900 font-mono">{stats.confirmedCount}</div>
           <div className="text-xs text-slate-500 mt-0.5 font-medium">

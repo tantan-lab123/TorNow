@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import {
+  deleteBlockedTime,
   getAppointmentById,
   getBusinessById,
   getStaffById,
@@ -12,7 +13,7 @@ import { clientIp, rateLimit, tooMany } from "@/lib/rateLimit";
 import { customerChangePolicy } from "@/lib/booking/policy";
 import { israelDateString } from "@/lib/booking/slotGenerator";
 import { notifyBusiness } from "@/lib/push";
-import { formatHebrewDate, formatTime } from "@/lib/utils";
+import { formatHebrewDate, formatTime, isBlockedTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -155,5 +156,49 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
   } catch (error) {
     console.error("Error updating appointment status:", error);
     return NextResponse.json({ error: "שגיאה בעדכון סטטוס התור" }, { status: 500 });
+  }
+}
+
+/**
+ * Team only: remove a block of blocked time. Only blocks can be deleted here; a customer's
+ * appointment is cancelled (PATCH), never erased. Customers waiting for that day are flagged.
+ */
+export async function DELETE(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  try {
+    const params = await ctx.params;
+    if (!UUID_RE.test(params.id)) {
+      return NextResponse.json({ error: "החסימה לא נמצאה" }, { status: 404 });
+    }
+    const auth = await requireRole(request, ANY_ROLE);
+    if (auth.error) return auth.error;
+
+    const existing = await getAppointmentById(params.id);
+    if (!existing || existing.business_id !== auth.session.businessId) {
+      return NextResponse.json({ error: "החסימה לא נמצאה" }, { status: 404 });
+    }
+    if (!isBlockedTime(existing)) {
+      return NextResponse.json({ error: "אפשר למחוק רק זמן חסום. תור של לקוח מבטלים." }, { status: 400 });
+    }
+
+    const removed = await deleteBlockedTime(existing.id);
+    if (!removed) return NextResponse.json({ error: "החסימה לא נמצאה" }, { status: 404 });
+
+    if (existing.status === "confirmed") {
+      after(async () => {
+        try {
+          await openWaitlistForSlot(
+            existing.business_id,
+            israelDateString(existing.start_time),
+            existing.start_time
+          );
+        } catch (e) {
+          console.error("post-unblock tasks failed:", e);
+        }
+      });
+    }
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error removing blocked time:", error);
+    return NextResponse.json({ error: "שגיאה בהסרת החסימה" }, { status: 500 });
   }
 }

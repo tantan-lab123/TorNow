@@ -20,6 +20,17 @@ export const metadata: Metadata = {
   title: "Torli | יומן תורים אונליין לעסקים",
   description:
     "הלקוחות קובעים, משנים ומבטלים תורים לבד מקישור אחד, ואתם מקבלים התראה ורואים הכל ביומן בטלפון. בלי אפליקציה ללקוח.",
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "Torli | יומן תורים אונליין לעסקים",
+    description:
+      "הלקוחות קובעים, משנים ומבטלים תורים לבד מקישור אחד. בלי שיחות, בלי התכתבויות ובלי אפליקציה ללקוח.",
+    type: "website",
+    locale: "he_IL",
+    siteName: "Torli",
+    url: "/",
+  },
+  twitter: { card: "summary", title: "Torli | יומן תורים אונליין לעסקים" },
 };
 
 // Demo booking pages the landing page links to, in order of preference. Only the ones
@@ -543,15 +554,15 @@ function FooterColumn({ title, links }: { title: string; links: { href: string; 
   return (
     <div>
       <p className="text-[13px] font-bold tracking-wide text-ink-500">{title}</p>
-      <ul className="mt-4 space-y-2.5">
+      <ul className="mt-2">
         {links.map((l) => (
           <li key={l.href}>
             {l.href.startsWith("#") ? (
-              <a href={l.href} className="text-[15px] font-semibold text-ink-800 hover:text-brand-600">
+              <a href={l.href} className="inline-flex min-h-11 items-center text-[15px] font-semibold text-ink-800 hover:text-brand-600">
                 {l.label}
               </a>
             ) : (
-              <Link href={l.href} className="text-[15px] font-semibold text-ink-800 hover:text-brand-600">
+              <Link href={l.href} className="inline-flex min-h-11 items-center text-[15px] font-semibold text-ink-800 hover:text-brand-600">
                 {l.label}
               </Link>
             )}

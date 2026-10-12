@@ -12,8 +12,9 @@ import { triggerHaptic } from "@/lib/utils";
 interface ServicesSectionProps {
   services: Service[];
   businessId: string;
-  onAddService: (service: Partial<Service>) => Promise<void>;
-  onEditService: (service: Service) => Promise<void>;
+  /** Resolve with an error message to keep the form open and show it, or nothing on success. */
+  onAddService: (service: Partial<Service>) => Promise<string | void>;
+  onEditService: (service: Service) => Promise<string | void>;
   onDeleteService?: (serviceId: string) => Promise<void>;
 }
 
@@ -45,6 +46,8 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
   const [buffer, setBuffer] = useState("10");
   const [price, setPrice] = useState("80");
   const [colorTag, setColorTag] = useState(COLOR_OPTIONS[0]);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Extract unique categories
   const categories = useMemo(() => {
@@ -69,6 +72,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
     setBuffer("10");
     setPrice("80");
     setColorTag(COLOR_OPTIONS[0]);
+    setFormError(null);
     setIsModalOpen(true);
   };
 
@@ -81,6 +85,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
     setBuffer(String(s.buffer_minutes));
     setPrice(String(s.price));
     setColorTag(s.color_tag || COLOR_OPTIONS[0]);
+    setFormError(null);
     setIsModalOpen(true);
   };
 
@@ -88,9 +93,29 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
     e.preventDefault();
     if (!name.trim() || !duration || !price) return;
 
+    const durationNum = Number(duration);
+    const bufferNum = Number(buffer) || 0;
+    const priceNum = Number(price);
+    if (!Number.isInteger(durationNum) || durationNum < 1 || durationNum > 1440) {
+      setFormError("משך הטיפול חייב להיות מספר שלם בין 1 ל-1440 דקות");
+      return;
+    }
+    if (!Number.isInteger(bufferNum) || bufferNum < 0 || bufferNum > 240) {
+      setFormError("זמן ההתארגנות חייב להיות מספר שלם בין 0 ל-240 דקות");
+      return;
+    }
+    if (!(priceNum >= 0) || priceNum > 100000) {
+      setFormError("המחיר חייב להיות מספר בין 0 ל-100,000");
+      return;
+    }
+
     triggerHaptic(20);
+    setFormError(null);
+    setIsSaving(true);
+    let error: string | void;
+    try {
     if (editingId) {
-      await onEditService({
+      error = await onEditService({
         id: editingId,
         business_id: businessId,
         name: name.trim(),
@@ -101,7 +126,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
         color_tag: colorTag,
       });
     } else {
-      await onAddService({
+      error = await onAddService({
         business_id: businessId,
         name: name.trim(),
         category: category.trim(),
@@ -111,7 +136,14 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
         color_tag: colorTag,
       });
     }
+    } finally {
+      setIsSaving(false);
+    }
 
+    if (error) {
+      setFormError(error);
+      return;
+    }
     setIsModalOpen(false);
   };
 
@@ -249,6 +281,8 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
               placeholder="30"
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
+              min={1}
+              max={1440}
               required
             />
             <Input
@@ -257,6 +291,8 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
               placeholder="10"
               value={buffer}
               onChange={(e) => setBuffer(e.target.value)}
+              min={0}
+              max={240}
               helperText="חסימה אוטומטית בין לקוחות"
             />
           </div>
@@ -267,6 +303,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
             placeholder="80"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
+            min={0}
             required
           />
 
@@ -290,11 +327,17 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
             </div>
           </div>
 
+          {formError && (
+            <p role="alert" className="rounded-xl border border-danger-200 bg-danger-50 px-3 py-2 text-xs font-bold text-danger-700">
+              {formError}
+            </p>
+          )}
+
           <div className="flex gap-2 pt-2">
             <Button type="button" variant="outline" className="flex-1" onClick={() => setIsModalOpen(false)}>
               ביטול
             </Button>
-            <Button type="submit" className="flex-1">
+            <Button type="submit" className="flex-1" isLoading={isSaving}>
               {editingId ? "שמור שינויים" : "צור שירות"}
             </Button>
           </div>

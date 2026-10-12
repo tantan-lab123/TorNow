@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { BellRing, Check, MessageCircle, X } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { formatHebrewDate, formatTime, toInternationalPhone, triggerHaptic } from "@/lib/utils";
+import { formatDayString, formatHebrewDate, formatTime, toInternationalPhone, triggerHaptic } from "@/lib/utils";
 
 interface WaitEntry {
   id: string;
@@ -83,7 +83,7 @@ export const WaitlistPanel: React.FC<{ businessName: string }> = ({ businessName
                   {e.first_name} {e.last_name}
                 </div>
                 <div className="text-xs text-slate-500">
-                  מחכה ל-{e.desired_date}
+                  מחכה ל{formatDayString(e.desired_date)}
                   {e.service?.name ? ` · ${e.service.name}` : ""}
                 </div>
                 {isOpen && e.opened_start && (
