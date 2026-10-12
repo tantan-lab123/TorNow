@@ -68,6 +68,37 @@ function compressImage(
   });
 }
 
+/**
+ * Crops an image to a fixed size (centered, like CSS object-fit: cover) and returns a JPEG data URL.
+ * Used for the link-preview picture, which must be exactly 1200x630 to look right in chat apps.
+ */
+function cropImageToSize(file: File, width: number, height: number, quality = 0.82): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = (err) => reject(err);
+    reader.onload = (event) => {
+      const img = new window.Image();
+      img.onerror = (err) => reject(err);
+      img.onload = () => {
+        const scale = Math.max(width / img.width, height / img.height);
+        const w = img.width * scale;
+        const h = img.height * scale;
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("canvas unavailable"));
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, (width - w) / 2, (height - h) / 2, w, h);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 interface SettingsSectionProps {
   business: Business;
   slotInterval: number;
@@ -102,6 +133,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
   const [payboxUrl, setPayboxUrl] = useState(business.settings?.paybox_payment_url || "");
   const [logoUrl, setLogoUrl] = useState(business.settings?.logo_url || "");
   const [coverUrl, setCoverUrl] = useState(business.settings?.cover_image_url || "");
+  const [ogUrl, setOgUrl] = useState(business.settings?.og_image_url || "");
 
   // Smart controls state
   const [interval, setInterval] = useState(String(slotInterval || 15));
@@ -122,6 +154,9 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
   );
 
   // Synchronize state whenever business prop updates
+  // (the form fields are drafts that restart from the saved values after every save, so this
+  // can not be a "key" remount: that would also reset the open sub-tab)
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setName(business.name);
     setPhone(business.owner_phone);
@@ -134,6 +169,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
     setPayboxUrl(business.settings?.paybox_payment_url || "");
     setLogoUrl(business.settings?.logo_url || "");
     setCoverUrl(business.settings?.cover_image_url || "");
+    setOgUrl(business.settings?.og_image_url || "");
     setInterval(String(slotInterval || 15));
     setMinNotice(String(business.settings?.min_notice_hours ?? 1));
     setMaxFuture(String(business.settings?.max_future_days ?? 60));
@@ -147,6 +183,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
     setShowHebrewDates(business.settings?.show_hebrew_dates ?? false);
     setPostBookingMsg(business.settings?.post_booking_message || "");
   }, [business, slotInterval]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -185,6 +222,16 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
     }
   };
 
+  const handleOgUpload = async (file: File) => {
+    try {
+      setOgUrl(await cropImageToSize(file, 1200, 630));
+      triggerHaptic(20);
+    } catch (err) {
+      console.error("Share image upload error:", err);
+      await alertDialog("שגיאה בטעינת התמונה");
+    }
+  };
+
   const handleSaveAll = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
@@ -200,6 +247,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
         paybox_payment_url: payboxUrl.trim(),
         logo_url: logoUrl.trim(),
         cover_image_url: coverUrl.trim(),
+        og_image_url: ogUrl.trim(),
         min_notice_hours: Number(minNotice),
         max_future_days: Number(maxFuture),
         cancellation_cutoff_hours: Number(cancellationCutoff),
@@ -271,11 +319,18 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
             <img src="${qrCodeImgUrl}" alt="QR Code" />
             <p style="font-size: 14px; color: #4D564F;" dir="ltr">${esc(bookingUrl)}</p>
           </div>
-          <script>window.onload = function() { window.print(); }</script>
         </body>
       </html>
     `);
     win.document.close();
+    // Printed from here: an inline <script> in the new window would be blocked by the page's CSP
+    const printWhenReady = () => {
+      win.focus();
+      win.print();
+    };
+    const qrImg = win.document.querySelector("img");
+    if (qrImg && !qrImg.complete) qrImg.addEventListener("load", printWhenReady, { once: true });
+    else setTimeout(printWhenReady, 150);
   };
 
   return (
@@ -516,6 +571,57 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
                           </button>
                         )}
                       </div>
+                    </div>
+                  </div>
+                  {/* Link-preview picture (optional) */}
+                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                    <div>
+                      <span className="text-xs font-bold text-slate-700 block">תמונה לשיתוף הקישור (וואטסאפ, פייסבוק)</span>
+                      <span className="text-[11px] text-ink-500 leading-snug block mt-0.5">
+                        לא חובה. זו התמונה שמופיעה כשמשתפים את קישור ההזמנה בהודעה. בלי תמונה נציג כרטיס אוטומטי עם שם העסק.
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="w-full aspect-[1200/630] rounded-xl border-2 border-dashed border-brand-300 bg-white flex items-center justify-center overflow-hidden shadow-2xs">
+                        {ogUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={ogUrl} alt="תצוגה מקדימה של תמונת השיתוף" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="text-center text-ink-500 flex items-center gap-1 text-xs px-3">
+                            <ImageIcon className="w-5 h-5" aria-hidden="true" />
+                            <span>כרטיס אוטומטי עם שם העסק</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-50 hover:bg-brand-100 text-brand-700 text-xs font-bold cursor-pointer transition-colors border border-brand-200">
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>{ogUrl ? "החלף תמונה" : "העלה תמונה"}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) handleOgUpload(f);
+                              e.target.value = "";
+                            }}
+                          />
+                        </label>
+                        {ogUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setOgUrl("")}
+                            className="flex items-center gap-1 min-h-[40px] px-2 text-[11px] text-danger-600 hover:text-danger-700 font-semibold"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span>הסר תמונה</span>
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-ink-500 leading-tight">
+                        מומלץ תמונה רחבה (יחס 1.9:1, למשל 1200×630). נחתכת למרכז ונשמרת אוטומטית. אחרי שמירה, וואטסאפ עשוי להציג את הישנה כמה שעות.
+                      </p>
                     </div>
                   </div>
                 </div>

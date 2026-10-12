@@ -13,7 +13,8 @@ type Phase = "checking" | "ready" | "invalid" | "done";
 
 /** Landing page of the emailed recovery link: proves the mailbox, then sets a new password. */
 export default function ResetPasswordPage() {
-  const [phase, setPhase] = useState<Phase>("checking");
+  // without the auth client there is nothing to check: the link can not work
+  const [phase, setPhase] = useState<Phase>(supabase ? "checking" : "invalid");
   const [token, setToken] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -22,10 +23,7 @@ export default function ResetPasswordPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!supabase) {
-      setPhase("invalid");
-      return;
-    }
+    if (!supabase) return;
     let settled = false;
     const accept = (session: { access_token: string } | null) => {
       if (settled || !session) return;

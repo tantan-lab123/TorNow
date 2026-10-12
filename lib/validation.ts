@@ -50,6 +50,7 @@ export function sanitizeSettings(raw: unknown): BusinessSettings {
     tiktok_url: safeHttpUrl(r.tiktok_url),
     logo_url: safeImageSrc(r.logo_url),
     cover_image_url: safeImageSrc(r.cover_image_url),
+    og_image_url: safeImageSrc(r.og_image_url),
     min_notice_hours: num(r.min_notice_hours, 0, 24 * 30),
     max_future_days: num(r.max_future_days, 1, 730),
     cancellation_cutoff_hours: num(r.cancellation_cutoff_hours, 0, 24 * 30),

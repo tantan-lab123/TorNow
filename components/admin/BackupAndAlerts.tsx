@@ -19,6 +19,8 @@ export const BackupAndAlerts: React.FC = () => {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    // Browser-only capability checks (they do not exist on the server), so they run after mount
+    /* eslint-disable react-hooks/set-state-in-effect */
     if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
       setPush("unsupported");
       return;
@@ -32,6 +34,7 @@ export const BackupAndAlerts: React.FC = () => {
       .then((reg) => reg?.pushManager.getSubscription())
       .then((sub) => setPush(sub ? "on" : "off"))
       .catch(() => setPush("off"));
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   const enable = async () => {

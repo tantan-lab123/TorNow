@@ -61,6 +61,8 @@ export const CustomersSection: React.FC<CustomersSectionProps> = ({
   const [importMessage, setImportMessage] = useState("");
   const [pickerSupported, setPickerSupported] = useState(false);
   useEffect(() => {
+    // the contact picker only exists in the browser, so it can only be checked after mount
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPickerSupported(isContactPickerSupported());
   }, []);
 
@@ -494,7 +496,7 @@ export const CustomersSection: React.FC<CustomersSectionProps> = ({
                   const s = services.find((srv) => srv.id === app.service_id) || app.service;
                   const date = new Date(app.start_time);
                   const isCancelled = app.status === "cancelled";
-                  const isUpcoming = !isCancelled && date.getTime() > Date.now();
+                  const isUpcoming = !isCancelled && date.getTime() > new Date().getTime();
 
                   return (
                     <div
@@ -564,7 +566,7 @@ export const CustomersSection: React.FC<CustomersSectionProps> = ({
                     if (onUpdateClientNotes) {
                       onUpdateClientNotes(selectedClient.id, clientNotesEdit.trim());
                     }
-                    selectedClient.notes = clientNotesEdit.trim();
+                    setSelectedClient({ ...selectedClient, notes: clientNotesEdit.trim() });
                     setNotesSaveSuccess(true);
                     setTimeout(() => setNotesSaveSuccess(false), 2500);
                   }}

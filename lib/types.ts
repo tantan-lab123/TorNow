@@ -60,6 +60,7 @@ export interface BusinessSettings {
   tiktok_url?: string;
   logo_url?: string; // Business logo image (data URL or external URL)
   cover_image_url?: string; // Business cover header banner (data URL or external URL)
+  og_image_url?: string; // Optional picture for shared links (WhatsApp...), 1200x630. Served at /api/og/<slug>, never in the public business JSON
   min_notice_hours?: number; // e.g. 0.25 (15 min), 1, 2, 24
   max_future_days?: number; // e.g. 30, 90, 180, 365
   cancellation_cutoff_hours?: number; // e.g. 6, 12, 24
