@@ -83,13 +83,13 @@ export const CashRegisterSection: React.FC<CashRegisterSectionProps> = ({
       {/* Register Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Card className="p-4 bg-white border border-slate-200 shadow-xs text-right">
-          <div className="text-xs text-slate-400 font-medium">סך תקבולים ידניים היום</div>
+          <div className="text-xs text-ink-500 font-medium">סך תקבולים ידניים היום</div>
           <div className="text-2xl font-black text-slate-900 mt-1">₪{totalReceipts}</div>
           <div className="text-[11px] text-emerald-600 font-bold mt-0.5">{manualReceipts.length} עסקאות נרשמו</div>
         </Card>
 
         <Card className="p-4 bg-white border border-slate-200 shadow-xs text-right">
-          <div className="text-xs text-slate-400 font-medium">הכנסה משוערת מהתורים היום</div>
+          <div className="text-xs text-ink-500 font-medium">הכנסה משוערת מהתורים היום</div>
           <div className="text-2xl font-black text-indigo-600 mt-1">₪{todayRevenue}</div>
           <div className="text-[11px] text-slate-500 font-medium mt-0.5">{confirmedAppointmentsCount} תורים מתוזמנים</div>
         </Card>
@@ -152,7 +152,7 @@ export const CashRegisterSection: React.FC<CashRegisterSectionProps> = ({
       <Card className="p-5 bg-white border border-slate-200 shadow-xs text-right space-y-3">
         <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
           <h3 className="text-sm font-extrabold text-slate-900">יומן עסקאות ותקבולים להיום</h3>
-          <span className="text-xs text-slate-400 font-mono">{new Date().toLocaleDateString("he-IL")}</span>
+          <span className="text-xs text-ink-500 font-mono">{new Date().toLocaleDateString("he-IL")}</span>
         </div>
 
         <div className="space-y-2">
@@ -170,7 +170,7 @@ export const CashRegisterSection: React.FC<CashRegisterSectionProps> = ({
 
               <div className="text-right">
                 <div className="font-bold text-slate-800">{rc.client}</div>
-                <div className="text-[11px] text-slate-400">{rc.service} • {rc.time}</div>
+                <div className="text-[11px] text-ink-500">{rc.service} • {rc.time}</div>
               </div>
             </div>
           ))}

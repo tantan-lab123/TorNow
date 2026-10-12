@@ -198,6 +198,12 @@ export function toOwnerBusiness(b: Business, role: Role = "owner"): Business {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { password, pin, google_id, ...rest } = b;
   const clean = { ...rest, settings: dropLegacyPrefills(rest.settings) };
-  // the calendar-feed secret is only for the owner and managers
-  return (role === "staff" ? clean : { ...clean, calendar_token: calendarToken(b.id) }) as Business;
+  // the calendar-feed secret is only for the owner and managers; the owner's email is not
+  // something an employee needs either
+  if (role === "staff") {
+    const { owner_email, ...forStaff } = clean;
+    void owner_email;
+    return forStaff as Business;
+  }
+  return { ...clean, calendar_token: calendarToken(b.id) } as Business;
 }

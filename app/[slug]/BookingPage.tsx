@@ -784,11 +784,11 @@ export default function BookingPage() {
                         </h3>
                         <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
                           <span className="flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5 text-slate-400" />
+                            <Clock className="w-3.5 h-3.5 text-ink-500" />
                             {service.duration_minutes} דקות
                           </span>
                           {service.buffer_minutes > 0 && (
-                            <span className="text-slate-400">
+                            <span className="text-ink-500">
                               (+{service.buffer_minutes} מנוחה)
                             </span>
                           )}
@@ -906,7 +906,7 @@ export default function BookingPage() {
                 {["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳"].map((dayName, idx) => (
                   <div
                     key={idx}
-                    className="text-xs font-bold text-slate-400 py-1"
+                    className="text-xs font-bold text-ink-500 py-1"
                   >
                     {dayName}
                   </div>
@@ -995,12 +995,12 @@ export default function BookingPage() {
                       type="button"
                       disabled
                       aria-disabled="true"
-                      className="w-10 h-12 sm:w-11 mx-auto rounded-md flex flex-col items-center justify-center text-xs sm:text-sm text-ink-400 bg-transparent cursor-not-allowed opacity-50 select-none pointer-events-none"
+                      className="w-10 h-12 sm:w-11 mx-auto rounded-md flex flex-col items-center justify-center text-xs sm:text-sm text-ink-500 bg-transparent cursor-not-allowed opacity-50 select-none pointer-events-none"
                       title={holiday ? `${formatHebrewDate(day)} - ${holiday}` : "אין תורים זמינים בתאריך זה"}
                     >
                       <span className="leading-none">{dayNum}</span>
                       {business?.settings?.show_hebrew_dates && (
-                        <span className="text-[9px] sm:text-[10px] leading-tight text-slate-400 font-medium truncate max-w-[38px] mt-0.5">
+                        <span className="text-[9px] sm:text-[10px] leading-tight text-ink-500 font-medium truncate max-w-[38px] mt-0.5">
                           {getHebrewDayLetter(day)}
                         </span>
                       )}
@@ -1030,7 +1030,7 @@ export default function BookingPage() {
                   </div>
                 )}
                 <div className="flex items-center gap-1.5">
-                  <span className="w-3.5 h-3.5 rounded text-ink-400 text-[10px] flex items-center justify-center font-bold">
+                  <span className="w-3.5 h-3.5 rounded text-ink-500 text-[10px] flex items-center justify-center font-bold">
                     -
                   </span>
                   <span>סגור</span>
@@ -1481,7 +1481,7 @@ export default function BookingPage() {
 
               {/* Booking Summary Box */}
               <Card className="m-ticket bg-white p-4 space-y-2 text-right [--notch:#F4F1E8]">
-                <span className="text-xs font-bold text-slate-400 block">
+                <span className="text-xs font-bold text-ink-500 block">
                   סיכום ההזמנה:
                 </span>
                 <div className="flex justify-between items-center text-sm">

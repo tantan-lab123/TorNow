@@ -28,7 +28,7 @@ import {
   parseContactsFile,
   pickContactsFromPhone,
 } from "@/lib/contacts";
-import { formatPhone, toInternationalPhone, formatTime, formatHebrewDate, formatShortDate, triggerHaptic, validatePhoneNumber } from "@/lib/utils";
+import { csvCell, formatPhone, toInternationalPhone, formatTime, formatHebrewDate, formatShortDate, triggerHaptic, validatePhoneNumber } from "@/lib/utils";
 
 interface CustomersSectionProps {
   clients: Client[];
@@ -244,17 +244,17 @@ export const CustomersSection: React.FC<CustomersSectionProps> = ({
       };
 
       return [
-        `"${(c.first_name || "").replace(/"/g, '""')}"`,
-        `"${(c.last_name || "").replace(/"/g, '""')}"`,
-        `"${formatPhone(c.phone)}"`,
-        `"${(c.email || "").replace(/"/g, '""')}"`,
-        `"${(c.birthday || "").replace(/"/g, '""')}"`,
+        csvCell(c.first_name),
+        csvCell(c.last_name),
+        csvCell(formatPhone(c.phone)),
+        csvCell(c.email),
+        csvCell(c.birthday),
         stats.totalBookings,
         stats.confirmedBookings,
         stats.cancellations,
         stats.totalRevenue,
         stats.lastAppointmentDate ? `"${formatShortDate(stats.lastAppointmentDate)}"` : '""',
-        `"${(c.notes || "").replace(/"/g, '""')}"`,
+        csvCell(c.notes),
       ].join(",");
     });
 
@@ -276,7 +276,7 @@ export const CustomersSection: React.FC<CustomersSectionProps> = ({
       {/* Top Controls: Search, Export & Add Button */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Search className="w-4 h-4 text-ink-500 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             placeholder="חיפוש לקוח לפי שם, טלפון או אימייל..."
@@ -287,7 +287,7 @@ export const CustomersSection: React.FC<CustomersSectionProps> = ({
           {searchTerm && (
             <button
               onClick={() => setSearchTerm("")}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-500 hover:text-slate-600"
             >
               <X className="w-4 h-4" />
             </button>
@@ -343,7 +343,7 @@ export const CustomersSection: React.FC<CustomersSectionProps> = ({
         <Card className="p-8 text-center text-slate-500 bg-white border border-slate-200">
           <Users className="w-10 h-10 text-slate-300 mx-auto mb-2" />
           <div className="font-bold text-slate-700 text-sm">לא נמצאו לקוחות מתאימים</div>
-          <div className="text-xs text-slate-400 mt-1">
+          <div className="text-xs text-ink-500 mt-1">
             נסה מונח חיפוש אחר או הוסף לקוח חדש למאגר
           </div>
         </Card>
@@ -381,13 +381,13 @@ export const CustomersSection: React.FC<CustomersSectionProps> = ({
                       </div>
                       <div className="text-xs text-slate-500 font-mono flex items-center justify-end gap-1 mt-0.5">
                         <span dir="ltr">{formatPhone(client.phone)}</span>
-                        <Phone className="w-3 h-3 text-slate-400" />
+                        <Phone className="w-3 h-3 text-ink-500" />
                       </div>
                     </div>
                   </div>
 
                   {client.email && (
-                    <div className="text-xs text-slate-400 truncate flex items-center justify-end gap-1 mb-2 font-mono">
+                    <div className="text-xs text-ink-500 truncate flex items-center justify-end gap-1 mb-2 font-mono">
                       <span>{client.email}</span>
                       <Mail className="w-3 h-3 flex-shrink-0" />
                     </div>
@@ -403,15 +403,15 @@ export const CustomersSection: React.FC<CustomersSectionProps> = ({
                 {/* Stats Row */}
                 <div className="pt-3 border-t border-slate-100 grid grid-cols-3 gap-1 text-center text-xs">
                   <div className="bg-slate-50 p-1.5 rounded-lg">
-                    <div className="text-[10px] text-slate-400 font-medium">הושלמו</div>
+                    <div className="text-[10px] text-ink-500 font-medium">הושלמו</div>
                     <div className="font-extrabold text-emerald-700">{stats.confirmedBookings}</div>
                   </div>
                   <div className="bg-slate-50 p-1.5 rounded-lg">
-                    <div className="text-[10px] text-slate-400 font-medium">ביטולים</div>
+                    <div className="text-[10px] text-ink-500 font-medium">ביטולים</div>
                     <div className="font-extrabold text-slate-600">{stats.cancellations}</div>
                   </div>
                   <div className="bg-slate-50 p-1.5 rounded-lg">
-                    <div className="text-[10px] text-slate-400 font-medium">סך רכישות</div>
+                    <div className="text-[10px] text-ink-500 font-medium">סך רכישות</div>
                     <div className="font-extrabold text-indigo-700">₪{stats.totalRevenue}</div>
                   </div>
                 </div>
@@ -454,7 +454,7 @@ export const CustomersSection: React.FC<CustomersSectionProps> = ({
               </div>
 
               <div className="text-right">
-                <div className="text-xs text-slate-400">מספר טלפון</div>
+                <div className="text-xs text-ink-500">מספר טלפון</div>
                 <div className="text-sm font-mono font-bold text-slate-900" dir="ltr">
                   {formatPhone(selectedClient.phone)}
                 </div>
@@ -485,7 +485,7 @@ export const CustomersSection: React.FC<CustomersSectionProps> = ({
             {/* Client History List */}
             <div>
               <h4 className="text-xs font-bold text-slate-700 mb-2 flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-slate-400" />
+                <Clock className="w-3.5 h-3.5 text-ink-500" />
                 <span>היסטוריית תורים ({clientStats[selectedClient.id]?.clientAppointments.length || 0})</span>
               </h4>
 
@@ -522,7 +522,7 @@ export const CustomersSection: React.FC<CustomersSectionProps> = ({
                       </div>
                       <div className="text-right">
                         <div className="font-bold text-slate-800">{s?.name || "טיפול"}</div>
-                        <div className="text-[11px] text-slate-400">
+                        <div className="text-[11px] text-ink-500">
                           {formatHebrewDate(date)} • {formatTime(date)}
                         </div>
                       </div>

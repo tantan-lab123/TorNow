@@ -80,14 +80,14 @@ export const MarketingSection: React.FC<MarketingSectionProps> = ({
             />
           </div>
 
-          <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium">
+          <div className="flex items-center justify-between text-[11px] text-ink-500 font-medium">
             <span>נותרו עוד {quotaTotal - quotaUsed} הודעות בחבילה</span>
             <span>מתאפס ב-1 לכל חודש</span>
           </div>
         </Card>
 
         <Card className="p-4 bg-white border border-slate-200 shadow-xs text-right flex flex-col justify-center">
-          <div className="text-xs text-slate-400 font-medium">נמענים זמינים במאגר</div>
+          <div className="text-xs text-ink-500 font-medium">נמענים זמינים במאגר</div>
           <div className="text-2xl font-black text-slate-900 mt-1">{clients.length}</div>
           <div className="text-[11px] text-emerald-600 font-bold mt-0.5">כל הלקוחות עם מספר נייד תקין</div>
         </Card>
@@ -158,7 +158,7 @@ export const MarketingSection: React.FC<MarketingSectionProps> = ({
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-xs font-bold text-slate-700">תוכן ההודעה</label>
-                <span className="text-[11px] text-slate-400 font-mono">
+                <span className="text-[11px] text-ink-500 font-mono">
                   {content.length} תווים • {Math.ceil(content.length / 70)} חלקי SMS
                 </span>
               </div>
@@ -188,9 +188,9 @@ export const MarketingSection: React.FC<MarketingSectionProps> = ({
 
           {/* Live Mobile Preview */}
           <div className="flex flex-col items-center justify-center p-4 bg-slate-50 rounded-2xl border border-slate-200">
-            <div className="text-[11px] font-bold text-slate-400 mb-2">תצוגה מקדימה במכשיר הלקוח:</div>
+            <div className="text-[11px] font-bold text-ink-500 mb-2">תצוגה מקדימה במכשיר הלקוח:</div>
             <div className="w-64 bg-white rounded-3xl p-3 shadow-md border border-slate-200 space-y-2">
-              <div className="flex items-center justify-between text-[10px] text-slate-400 border-b border-slate-100 pb-1.5">
+              <div className="flex items-center justify-between text-[10px] text-ink-500 border-b border-slate-100 pb-1.5">
                 <span className="font-bold text-slate-700">{businessName}</span>
                 <span>עכשיו</span>
               </div>
@@ -218,7 +218,7 @@ export const MarketingSection: React.FC<MarketingSectionProps> = ({
                 <Badge variant="success" className="text-[10px]">
                   נמסר ({msg.recipient_count} נמענים)
                 </Badge>
-                <span className="text-slate-400 text-[11px] font-mono">{msg.sent_at}</span>
+                <span className="text-ink-500 text-[11px] font-mono">{msg.sent_at}</span>
               </div>
               <div className="text-right max-w-sm truncate font-medium text-slate-700">
                 {msg.content}

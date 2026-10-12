@@ -102,7 +102,7 @@ export function FeatureGrid() {
             >
               <div className="flex flex-none items-start justify-between sm:mb-7">
                 <Icon className="h-6 w-6 text-brand-600" strokeWidth={1.75} aria-hidden="true" />
-                <span className="hidden text-xs font-bold tabular-nums text-ink-400 sm:inline">
+                <span className="hidden text-xs font-bold tabular-nums text-ink-500 sm:inline">
                   {String(i + 1).padStart(2, "0")}
                 </span>
               </div>

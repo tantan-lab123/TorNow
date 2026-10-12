@@ -53,7 +53,7 @@ export const WaitlistPanel: React.FC<{ businessName: string }> = ({ businessName
     <Card className="p-4 bg-white border border-slate-200 shadow-xs text-right space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 font-extrabold text-sm text-slate-900">
-          <BellRing className={`w-4 h-4 ${open.length ? "text-amber-500" : "text-slate-400"}`} />
+          <BellRing className={`w-4 h-4 ${open.length ? "text-amber-500" : "text-ink-500"}`} />
           <span>רשימת המתנה ({entries.length})</span>
         </div>
         {open.length > 0 && (

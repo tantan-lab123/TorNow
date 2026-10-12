@@ -471,3 +471,10 @@ export function countAppointments(n: number): string {
   if (n === 0) return "אין תורים";
   return n === 1 ? "תור אחד" : `${n} תורים`;
 }
+
+/** One CSV cell, quoted. A cell starting with = + - @ would run as a formula in Excel, so it is prefixed with '. */
+export function csvCell(v: unknown): string {
+  let s = v === null || v === undefined ? "" : String(v);
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+  return `"${s.replace(/"/g, '""')}"`;
+}

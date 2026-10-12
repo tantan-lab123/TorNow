@@ -122,7 +122,7 @@ export const WorkScheduleSection: React.FC<WorkScheduleSectionProps> = ({
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
               <h3 className="text-sm font-extrabold text-slate-900">שעות פעילות קבועות לפי ימי השבוע</h3>
-              <p className="text-xs text-slate-400 mt-0.5">קבע זמני פתיחה וסגירה או סמן יום כסגור</p>
+              <p className="text-xs text-ink-500 mt-0.5">קבע זמני פתיחה וסגירה או סמן יום כסגור</p>
             </div>
             <Button
               onClick={handleSaveHours}
@@ -143,12 +143,13 @@ export const WorkScheduleSection: React.FC<WorkScheduleSectionProps> = ({
                 <div
                   key={day}
                   className={`p-3 rounded-2xl border transition-all flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center justify-between gap-3 ${
-                    current.active ? "bg-white border-slate-200" : "bg-slate-50 border-slate-200/60 opacity-65"
+                    current.active ? "bg-white border-slate-200" : "bg-slate-50 border-slate-200/60"
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <input
                       type="checkbox"
+                      aria-label={`פתוח ב${HEBREW_DAYS[day]}`}
                       checked={current.active}
                       onChange={(e) => {
                         setHoursState({
@@ -170,9 +171,10 @@ export const WorkScheduleSection: React.FC<WorkScheduleSectionProps> = ({
 
                   {current.active && (
                     <div className="flex items-center gap-2 text-xs">
-                      <span className="text-slate-400">פתיחה:</span>
+                      <span className="text-ink-500">פתיחה:</span>
                       <input
                         type="time"
+                        aria-label={`שעת פתיחה, ${HEBREW_DAYS[day]}`}
                         value={current.open}
                         onChange={(e) => {
                           setHoursState({
@@ -182,9 +184,10 @@ export const WorkScheduleSection: React.FC<WorkScheduleSectionProps> = ({
                         }}
                         className="px-2 py-1 rounded-xl border border-slate-200 bg-slate-50 font-mono text-xs text-center"
                       />
-                      <span className="text-slate-400">עד:</span>
+                      <span className="text-ink-500">עד:</span>
                       <input
                         type="time"
+                        aria-label={`שעת סגירה, ${HEBREW_DAYS[day]}`}
                         value={current.close}
                         onChange={(e) => {
                           setHoursState({
@@ -223,7 +226,7 @@ export const WorkScheduleSection: React.FC<WorkScheduleSectionProps> = ({
                       </label>
                       {current.lunch_break?.active ? (
                         <>
-                          <span className="text-slate-400">מ:</span>
+                          <span className="text-ink-500">מ:</span>
                           <input
                             type="time"
                             aria-label={`תחילת הפסקה, ${HEBREW_DAYS[day]}`}
@@ -236,7 +239,7 @@ export const WorkScheduleSection: React.FC<WorkScheduleSectionProps> = ({
                             }}
                             className="px-2 py-1 rounded-xl border border-slate-200 bg-slate-50 font-mono text-xs text-center"
                           />
-                          <span className="text-slate-400">עד:</span>
+                          <span className="text-ink-500">עד:</span>
                           <input
                             type="time"
                             aria-label={`סוף הפסקה, ${HEBREW_DAYS[day]}`}
@@ -251,7 +254,7 @@ export const WorkScheduleSection: React.FC<WorkScheduleSectionProps> = ({
                           />
                         </>
                       ) : (
-                        <span className="text-slate-400">אין הפסקה ביום הזה</span>
+                        <span className="text-ink-500">אין הפסקה ביום הזה</span>
                       )}
                     </div>
                   )}
@@ -268,7 +271,7 @@ export const WorkScheduleSection: React.FC<WorkScheduleSectionProps> = ({
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
               <h3 className="text-sm font-extrabold text-slate-900">חגים, מועדים וחסימות תאריכים מראש</h3>
-              <p className="text-xs text-slate-400 mt-0.5">חסימת ימים ספציפיים מלקבוע בהם תורים ביומן</p>
+              <p className="text-xs text-ink-500 mt-0.5">חסימת ימים ספציפיים מלקבוע בהם תורים ביומן</p>
             </div>
             <Button
               size="sm"
@@ -285,7 +288,7 @@ export const WorkScheduleSection: React.FC<WorkScheduleSectionProps> = ({
 
           <div className="space-y-2">
             {dateOverrides.length === 0 ? (
-              <div className="text-center py-8 text-xs text-slate-400">
+              <div className="text-center py-8 text-xs text-ink-500">
                 אין חופשות או חגים מוגדרים כרגע. לחץ על הכפתור למעלה כדי לחסום תאריך.
               </div>
             ) : (

@@ -168,7 +168,7 @@ function DiaryPage() {
       {hours.map((h, i) => (
         <span
           key={h}
-          className="absolute right-3 -translate-y-1/2 text-[11px] font-semibold tabular-nums text-ink-400 sm:right-4"
+          className="absolute right-3 -translate-y-1/2 text-[11px] font-semibold tabular-nums text-ink-500 sm:right-4"
           style={{ top: 56 + i * 112 }}
         >
           {h}

@@ -170,7 +170,7 @@ export const EmployeesSection: React.FC<EmployeesSectionProps> = ({
                       run(() => onDeleteEmployee(emp.id));
                     }
                   }}
-                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+                  className="p-1.5 text-ink-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
                   title="מחק עובד מהמערכת"
                 >
                   <Trash2 className="w-4 h-4" />
