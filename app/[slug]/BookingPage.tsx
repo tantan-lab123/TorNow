@@ -583,17 +583,17 @@ export default function BookingPage() {
   // Loading Screen
   if (isLoadingBusiness) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center">
+      <main className="flex flex-col items-center justify-center min-h-screen p-6 text-center">
         <div className="m-spin m-spin-dark mb-4" style={{ width: 36, height: 36, borderWidth: 3 }} />
         <p className="text-ink-600 font-medium">טוען את היומן...</p>
-      </div>
+      </main>
     );
   }
 
   // Not Found Screen
   if (notFound || !business) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center max-w-md mx-auto">
+      <main className="flex flex-col items-center justify-center min-h-screen p-6 text-center max-w-md mx-auto">
         <div className="w-16 h-16 bg-danger-50 text-danger-600 rounded-xl flex items-center justify-center mb-4">
           <AlertCircle className="w-8 h-8" />
         </div>
@@ -604,7 +604,7 @@ export default function BookingPage() {
         <Button onClick={() => router.push("/")} variant="outline">
           חזרה לדף הראשי
         </Button>
-      </div>
+      </main>
     );
   }
 

@@ -97,21 +97,21 @@ export const WaitlistPanel: React.FC<{ businessName: string }> = ({ businessName
                   href={`https://wa.me/${toInternationalPhone(e.phone)}?text=${msg}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 h-8 px-2.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold hover:bg-emerald-100"
+                  className="inline-flex items-center gap-1 h-11 px-3 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold hover:bg-emerald-100"
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
                   <span>וואטסאפ</span>
                 </a>
                 <button
                   onClick={() => resolve(e.id, "done")}
-                  className="h-8 w-8 rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 flex items-center justify-center"
+                  className="h-11 w-11 rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 flex items-center justify-center"
                   title="טופל"
                 >
                   <Check className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => resolve(e.id, "cancelled")}
-                  className="h-8 w-8 rounded-xl bg-slate-100 text-slate-500 hover:bg-rose-50 hover:text-rose-600 flex items-center justify-center"
+                  className="h-11 w-11 rounded-xl bg-slate-100 text-slate-500 hover:bg-rose-50 hover:text-rose-600 flex items-center justify-center"
                   title="הסר מהרשימה"
                 >
                   <X className="w-4 h-4" />

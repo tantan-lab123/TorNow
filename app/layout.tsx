@@ -44,7 +44,7 @@ export default function RootLayout({
   return (
     <html lang="he" dir="rtl" className={`${plinko.variable} ${heebo.variable}`}>
       <body className="font-sans antialiased bg-paper text-ink-900">
-        <main className="min-h-screen flex flex-col">{children}</main>
+        <div className="min-h-screen flex flex-col">{children}</div>
       </body>
     </html>
   );
