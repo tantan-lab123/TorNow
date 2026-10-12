@@ -278,7 +278,7 @@ export const AdminTopBar: React.FC<AdminTopBarProps> = ({
                     {item.badge && (
                       <span className="text-[10px] px-1.5 rounded font-bold leading-4 bg-pending-100 text-pending-700">{item.badge}</span>
                     )}
-                    <ChevronLeft className="w-4 h-4 text-ink-400" />
+                    <ChevronLeft className="w-4 h-4 text-ink-500" />
                   </button>
                 );
               })}

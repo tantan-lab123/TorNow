@@ -13,7 +13,7 @@ import {
   verifyGoogleAccessToken,
   verifyPassword,
 } from "@/lib/auth";
-import { clientIp, rateLimit, tooMany } from "@/lib/rateLimit";
+import { clearRateLimit, clientIp, isRateLimited, rateLimit, tooMany } from "@/lib/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -47,11 +47,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "יש להזין מספר טלפון וסיסמה" }, { status: 400 });
     }
     const digits = phone.replace(/\D/g, "");
-    if (!rateLimit(`login:phone:${digits}`, 6, FIFTEEN_MIN)) return tooMany();
+    // Only FAILED attempts count. The owner's number is public on the booking page, so a
+    // per-number limit alone would let anyone lock the owner out: failures are counted per
+    // number AND address (6 tries), with a much higher cap per number across all addresses.
+    const phoneKey = `login:phone:${digits}:${ip}`;
+    const phoneAllKey = `login:phone-all:${digits}`;
+    if (isRateLimited(phoneKey, 6) || isRateLimited(phoneAllKey, 40)) return tooMany();
 
     const business = await getBusinessByPhone(digits);
     const ownerCheck = verifyPassword(password, business?.password);
     if (business && ownerCheck.ok) {
+      clearRateLimit(phoneKey);
       let storedHash = business.password;
       if (ownerCheck.needsRehash) {
         storedHash = hashPassword(password);
@@ -65,6 +71,7 @@ export async function POST(request: NextRequest) {
     const staff = await getStaffByPhone(digits);
     const staffCheck = verifyPassword(password, staff?.password);
     if (staff && staff.active && staffCheck.ok) {
+      clearRateLimit(phoneKey);
       const staffBusiness = await getBusinessById(staff.business_id);
       if (staffBusiness) {
         const res = NextResponse.json({
@@ -78,6 +85,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    rateLimit(phoneKey, 6, FIFTEEN_MIN); // count this failure
+    rateLimit(phoneAllKey, 40, FIFTEEN_MIN);
     return NextResponse.json({ error: "מספר טלפון או סיסמה אינם נכונים" }, { status: 401 });
   } catch (error) {
     console.error("Login error:", error);

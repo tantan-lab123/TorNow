@@ -201,7 +201,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
 
                 <div className="flex-1 text-right">
                   <div className="font-extrabold text-slate-900 text-sm">{service.name}</div>
-                  <div className="text-xs text-slate-400 font-medium mt-0.5">
+                  <div className="text-xs text-ink-500 font-medium mt-0.5">
                     {service.category || "שירות כללי"}
                   </div>
                 </div>
@@ -228,21 +228,21 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
 
               <div className="flex items-center justify-between py-2 border-y border-slate-100 text-xs">
                 <div>
-                  <span className="text-slate-400">משך זמן: </span>
+                  <span className="text-ink-500">משך זמן: </span>
                   <span className="font-extrabold text-slate-800">{service.duration_minutes} דק&apos;</span>
                 </div>
                 <div>
-                  <span className="text-slate-400">התארגנות (Buffer): </span>
+                  <span className="text-ink-500">התארגנות (Buffer): </span>
                   <span className="font-extrabold text-amber-700">+{service.buffer_minutes} דק&apos;</span>
                 </div>
                 <div>
-                  <span className="text-slate-400">מחיר: </span>
+                  <span className="text-ink-500">מחיר: </span>
                   <span className="font-black text-indigo-700 text-sm font-mono">₪{service.price}</span>
                 </div>
               </div>
             </div>
 
-            <div className="pt-2 text-[11px] text-slate-400 flex items-center justify-between">
+            <div className="pt-2 text-[11px] text-ink-500 flex items-center justify-between">
               <span>סך זמן משוער ביומן:</span>
               <span className="font-bold text-slate-700">
                 ~ {service.duration_minutes + service.buffer_minutes} דקות

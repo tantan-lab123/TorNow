@@ -1245,7 +1245,7 @@ export default function AdminDashboardPage() {
 
               <div className="relative flex py-1 items-center justify-center">
                 <div className="flex-grow border-t border-slate-200"></div>
-                <span className="flex-shrink mx-3 text-slate-400 text-xs font-medium">או התחבר עם טלפון וסיסמה</span>
+                <span className="flex-shrink mx-3 text-ink-500 text-xs font-medium">או התחבר עם טלפון וסיסמה</span>
                 <div className="flex-grow border-t border-slate-200"></div>
               </div>
 
@@ -1422,7 +1422,7 @@ export default function AdminDashboardPage() {
 
                   <div className="relative flex py-1 items-center justify-center">
                     <div className="flex-grow border-t border-slate-200"></div>
-                    <span className="flex-shrink mx-3 text-slate-400 text-xs font-medium">או מלא את פרטי העסק והסיסמה</span>
+                    <span className="flex-shrink mx-3 text-ink-500 text-xs font-medium">או מלא את פרטי העסק והסיסמה</span>
                     <div className="flex-grow border-t border-slate-200"></div>
                   </div>
                 </>
@@ -1455,7 +1455,7 @@ export default function AdminDashboardPage() {
                     </button>
                   </div>
                   <div className="flex items-center rounded-2xl border border-slate-200 bg-white px-3 h-12 ltr focus-within:border-indigo-600 focus-within:ring-4 focus-within:ring-indigo-500/15 transition-all">
-                    <span className="text-xs text-slate-400 font-mono">torli.app/</span>
+                    <span className="text-xs text-ink-500 font-mono">torli.app/</span>
                     <input
                       type="text"
                       value={regSlug}
@@ -1472,7 +1472,7 @@ export default function AdminDashboardPage() {
                       required
                     />
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-1 text-right">
+                  <p className="text-[11px] text-ink-500 mt-1 text-right">
                     כתובת מקוצרת וקלה לשיתוף (למשל torli-eight.vercel.app/{regSlug || "kx9m2p"})
                   </p>
                 </div>
@@ -1534,35 +1534,35 @@ export default function AdminDashboardPage() {
                       </span>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px]">
                         <div className={cn("flex items-center gap-1.5 transition-colors", passwordValidation.hasMinLength ? "text-emerald-700 font-bold" : "text-slate-500")}>
-                          <div className={cn("w-4 h-4 rounded-full flex items-center justify-center text-[10px]", passwordValidation.hasMinLength ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-400")}>
+                          <div className={cn("w-4 h-4 rounded-full flex items-center justify-center text-[10px]", passwordValidation.hasMinLength ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-ink-500")}>
                             {passwordValidation.hasMinLength ? <Check className="w-3 h-3" /> : "•"}
                           </div>
                           <span>לפחות 8 תווים</span>
                         </div>
 
                         <div className={cn("flex items-center gap-1.5 transition-colors", passwordValidation.hasUpper ? "text-emerald-700 font-bold" : "text-slate-500")}>
-                          <div className={cn("w-4 h-4 rounded-full flex items-center justify-center text-[10px]", passwordValidation.hasUpper ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-400")}>
+                          <div className={cn("w-4 h-4 rounded-full flex items-center justify-center text-[10px]", passwordValidation.hasUpper ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-ink-500")}>
                             {passwordValidation.hasUpper ? <Check className="w-3 h-3" /> : "•"}
                           </div>
                           <span>אות גדולה באנגלית (A-Z)</span>
                         </div>
 
                         <div className={cn("flex items-center gap-1.5 transition-colors", passwordValidation.hasLower ? "text-emerald-700 font-bold" : "text-slate-500")}>
-                          <div className={cn("w-4 h-4 rounded-full flex items-center justify-center text-[10px]", passwordValidation.hasLower ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-400")}>
+                          <div className={cn("w-4 h-4 rounded-full flex items-center justify-center text-[10px]", passwordValidation.hasLower ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-ink-500")}>
                             {passwordValidation.hasLower ? <Check className="w-3 h-3" /> : "•"}
                           </div>
                           <span>אות קטנה באנגלית (a-z)</span>
                         </div>
 
                         <div className={cn("flex items-center gap-1.5 transition-colors", passwordValidation.hasNumber ? "text-emerald-700 font-bold" : "text-slate-500")}>
-                          <div className={cn("w-4 h-4 rounded-full flex items-center justify-center text-[10px]", passwordValidation.hasNumber ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-400")}>
+                          <div className={cn("w-4 h-4 rounded-full flex items-center justify-center text-[10px]", passwordValidation.hasNumber ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-ink-500")}>
                             {passwordValidation.hasNumber ? <Check className="w-3 h-3" /> : "•"}
                           </div>
                           <span>ספרה (0-9)</span>
                         </div>
 
                         <div className={cn("flex items-center gap-1.5 transition-colors sm:col-span-2", passwordValidation.hasSpecial ? "text-emerald-700 font-bold" : "text-slate-500")}>
-                          <div className={cn("w-4 h-4 rounded-full flex items-center justify-center text-[10px]", passwordValidation.hasSpecial ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-400")}>
+                          <div className={cn("w-4 h-4 rounded-full flex items-center justify-center text-[10px]", passwordValidation.hasSpecial ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-ink-500")}>
                             {passwordValidation.hasSpecial ? <Check className="w-3 h-3" /> : "•"}
                           </div>
                           <span>{"תו מיוחד (!@#$%^&*()_+-=[]{};':\"|,.<>/?) "}</span>
@@ -1749,7 +1749,7 @@ export default function AdminDashboardPage() {
 
                     {cfg.active && (
                       <div className="flex flex-wrap items-center gap-2.5 text-xs">
-                        <span className="text-slate-400 font-medium">פתיחה:</span>
+                        <span className="text-ink-500 font-medium">פתיחה:</span>
                         <input
                           type="time"
                           value={cfg.open}
@@ -1764,7 +1764,7 @@ export default function AdminDashboardPage() {
                           }}
                           className="border border-slate-200 rounded-xl px-2.5 py-1 text-slate-800 font-bold bg-white"
                         />
-                        <span className="text-slate-400 font-medium">סגירה:</span>
+                        <span className="text-ink-500 font-medium">סגירה:</span>
                         <input
                           type="time"
                           value={cfg.close}
@@ -1788,7 +1788,7 @@ export default function AdminDashboardPage() {
 
             {/* Bottom Actions */}
             <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-ink-500">
                 השעות יישמרו ותוכל לעדכן אותן תמיד דרך אזור &quot;שעות פעילות&quot;.
               </span>
               <Button
@@ -2094,7 +2094,7 @@ export default function AdminDashboardPage() {
                     {soundEnabled ? (
                       <Volume2 className="w-3.5 h-3.5 text-emerald-600" />
                     ) : (
-                      <VolumeX className="w-3.5 h-3.5 text-slate-400" />
+                      <VolumeX className="w-3.5 h-3.5 text-ink-500" />
                     )}
                     <span>{soundEnabled ? "צליל פעיל" : "מושתק"}</span>
                   </button>
@@ -2870,7 +2870,7 @@ export default function AdminDashboardPage() {
               {/* Action 2 & 3: Close or Reopen (Only applicable for today or future dates) */}
               {!isPastDate && (
                 <div className="space-y-2 pt-2 border-t border-slate-100">
-                  <span className="text-xs font-bold text-slate-400 block mb-1">
+                  <span className="text-xs font-bold text-ink-500 block mb-1">
                     פעולות סגירה ופתיחה מהירות:
                   </span>
 
@@ -2937,7 +2937,7 @@ export default function AdminDashboardPage() {
                 className="p-2.5 rounded-xl border border-slate-200 text-xs font-bold bg-white hover:bg-indigo-50 hover:border-indigo-300 text-slate-800 text-right transition-all"
               >
                 <div>השבוע (א׳ - ה׳)</div>
-                <div className="text-[10px] text-slate-400 font-normal">סגור את השבוע הנוכחי</div>
+                <div className="text-[10px] text-ink-500 font-normal">סגור את השבוע הנוכחי</div>
               </button>
               <button
                 type="button"
@@ -2948,7 +2948,7 @@ export default function AdminDashboardPage() {
                 className="p-2.5 rounded-xl border border-slate-200 text-xs font-bold bg-white hover:bg-indigo-50 hover:border-indigo-300 text-slate-800 text-right transition-all"
               >
                 <div>שבוע הבא (א׳ - ה׳)</div>
-                <div className="text-[10px] text-slate-400 font-normal">חופשה שבוע שלם</div>
+                <div className="text-[10px] text-ink-500 font-normal">חופשה שבוע שלם</div>
               </button>
               <button
                 type="button"
@@ -2959,7 +2959,7 @@ export default function AdminDashboardPage() {
                 className="p-2.5 rounded-xl border border-slate-200 text-xs font-bold bg-white hover:bg-indigo-50 hover:border-indigo-300 text-slate-800 text-right transition-all"
               >
                 <div>סוף שבוע (ה׳ + ו׳)</div>
-                <div className="text-[10px] text-slate-400 font-normal">סגירת סופ״ש</div>
+                <div className="text-[10px] text-ink-500 font-normal">סגירת סופ״ש</div>
               </button>
               <button
                 type="button"
@@ -2970,7 +2970,7 @@ export default function AdminDashboardPage() {
                 className="p-2.5 rounded-xl border border-slate-200 text-xs font-bold bg-white hover:bg-indigo-50 hover:border-indigo-300 text-slate-800 text-right transition-all"
               >
                 <div>שבועיים חופשה</div>
-                <div className="text-[10px] text-slate-400 font-normal">14 ימים ברצף</div>
+                <div className="text-[10px] text-ink-500 font-normal">14 ימים ברצף</div>
               </button>
             </div>
           </div>

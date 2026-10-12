@@ -330,7 +330,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
             <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-extrabold text-slate-900">פרטי בית העסק וקישורים</h3>
-                <p className="text-xs text-slate-400 mt-0.5">מידע המוצג ללקוח בדף הזימון ובהודעות התזכורת</p>
+                <p className="text-xs text-ink-500 mt-0.5">מידע המוצג ללקוח בדף הזימון ובהודעות התזכורת</p>
               </div>
               <Button type="submit" size="sm" isLoading={isSaving} className="shadow-xs">
                 {saveSuccess ? <Check className="w-4 h-4 ml-1" /> : null}
@@ -403,7 +403,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
               <div className="sm:col-span-2 pt-3 border-t border-slate-100">
                 <div className="mb-2">
                   <span className="text-xs font-bold text-slate-800 block">קישורי תשלום מהיר ללקוחות (Bit ו-PayBox)</span>
-                  <span className="text-[11px] text-slate-400">הקישורים יופיעו ללקוח במסך סיום קביעת התור לתשלום מיידי בלחיצה אחת</span>
+                  <span className="text-[11px] text-ink-500">הקישורים יופיעו ללקוח במסך סיום קביעת התור לתשלום מיידי בלחיצה אחת</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <Input
@@ -429,7 +429,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
               <div className="sm:col-span-2 pt-4 border-t border-slate-100 space-y-3">
                 <div>
                   <span className="text-xs font-bold text-slate-800 block">מיתוג ותמונות לעמוד הלקוח</span>
-                  <span className="text-[11px] text-slate-400">הלוגו ותמונת הקאבר יוצגו בראש דף קביעת התורים של העסק (נשמר ישירות ללא צורך בשירות חיצוני)</span>
+                  <span className="text-[11px] text-ink-500">הלוגו ותמונת הקאבר יוצגו בראש דף קביעת התורים של העסק (נשמר ישירות ללא צורך בשירות חיצוני)</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -469,7 +469,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
                             <span>הסר לוגו</span>
                           </button>
                         )}
-                        <p className="text-[10px] text-slate-400 leading-tight">
+                        <p className="text-[10px] text-ink-500 leading-tight">
                           קובץ תמונה (PNG/JPG/WebP). נדחס ונשמר ישירות ללא עלות נוספת.
                         </p>
                       </div>
@@ -485,8 +485,8 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={coverUrl} alt="תמונת רקע" className="w-full h-full object-cover" />
                         ) : (
-                          <div className="text-center text-slate-300 flex items-center gap-1 text-xs">
-                            <ImageIcon className="w-5 h-5" />
+                          <div className="text-center text-ink-500 flex items-center gap-1 text-xs">
+                            <ImageIcon className="w-5 h-5" aria-hidden="true" />
                             <span>באנר עליון לדף התורים</span>
                           </div>
                         )}
@@ -525,7 +525,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
               <div className="sm:col-span-2 pt-4 border-t border-slate-100 space-y-2">
                 <div>
                   <span className="text-xs font-bold text-slate-800 block">הנחיות, דרכי הגעה ודגשים ללקוח לאחר קביעת תור</span>
-                  <span className="text-[11px] text-slate-400">טקסט זה יוצג בהבלטה ללקוח במסך אישור התור הסופי</span>
+                  <span className="text-[11px] text-ink-500">טקסט זה יוצג בהבלטה ללקוח במסך אישור התור הסופי</span>
                 </div>
                 <textarea
                   rows={3}
@@ -546,7 +546,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
               <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-extrabold text-slate-900">בקרות ומדיניות תורים חכמה</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">שליטה מלאה על מועדי הזימון, הביטול והתצוגה</p>
+                  <p className="text-xs text-ink-500 mt-0.5">שליטה מלאה על מועדי הזימון, הביטול והתצוגה</p>
                 </div>
                 <Button type="submit" size="sm" isLoading={isSaving} className="shadow-xs">
                   {saveSuccess ? <Check className="w-4 h-4 ml-1" /> : null}
@@ -647,7 +647,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
                 <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200">
                   <div>
                     <div className="text-xs font-bold text-slate-800">הצגת מחיר ומשך שירות בדף הזימון</div>
-                    <div className="text-[11px] text-slate-400">הצג ללקוחות כמה זמן נמשך הטיפול ומה עלותו</div>
+                    <div className="text-[11px] text-ink-500">הצג ללקוחות כמה זמן נמשך הטיפול ומה עלותו</div>
                   </div>
                   <input
                     type="checkbox"
@@ -660,7 +660,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
                 <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200">
                   <div>
                     <div className="text-xs font-bold text-slate-800">בחירת איש צוות על ידי הלקוח</div>
-                    <div className="text-[11px] text-slate-400">חייב את הלקוח לבחור עובד מסוים, או שובץ אוטומטית</div>
+                    <div className="text-[11px] text-ink-500">חייב את הלקוח לבחור עובד מסוים, או שובץ אוטומטית</div>
                   </div>
                   <input
                     type="checkbox"
@@ -673,7 +673,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
                 <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200">
                   <div>
                     <div className="text-xs font-bold text-slate-800">רשימת המתנה חכמה (Waiting List)</div>
-                    <div className="text-[11px] text-slate-400">הצע ללקוחות להירשם לתור שיתפנה במקרה של ביטול</div>
+                    <div className="text-[11px] text-ink-500">הצע ללקוחות להירשם לתור שיתפנה במקרה של ביטול</div>
                   </div>
                   <input
                     type="checkbox"
@@ -686,7 +686,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
                 <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
                   <div>
                     <div className="text-xs font-bold text-slate-800">מגבלות תורים ללקוח בודד (מניעת תפיסת מקומות כפולים)</div>
-                    <div className="text-[11px] text-slate-400">שליטה בכמה תורים לקוח יחיד מורשה להזמין ביום, בשבוע ובחודש</div>
+                    <div className="text-[11px] text-ink-500">שליטה בכמה תורים לקוח יחיד מורשה להזמין ביום, בשבוע ובחודש</div>
                   </div>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
@@ -790,7 +790,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
                   <div className="w-48 h-48 mx-auto rounded-xl bg-ink-100 animate-pulse" aria-hidden="true" />
                 )}
               </div>
-              <div className="text-[11px] font-mono text-slate-400 mt-3 truncate max-w-xs mx-auto" dir="ltr">
+              <div className="text-[11px] font-mono text-ink-500 mt-3 truncate max-w-xs mx-auto" dir="ltr">
                 {bookingUrl}
               </div>
             </div>
@@ -898,7 +898,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
                     )}
                   </Button>
                 </div>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] text-ink-500">
                   פורמט סטנדרטי בינלאומי התומך ב-Google Calendar, Apple iCal, Microsoft Outlook.
                 </p>
               </div>

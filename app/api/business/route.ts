@@ -23,6 +23,14 @@ import { sanitizeDateOverrides, sanitizeSettings, sanitizeWorkingHours } from "@
 
 export const dynamic = "force-dynamic";
 
+// Addresses that already belong to the site (/admin, /api/..., /cancel/...): a business with one
+// of these would register fine and then have a booking link that never opens.
+const RESERVED_SLUGS = new Set([
+  "admin", "api", "cancel", "login", "logout", "register", "signup", "reset", "forgot",
+  "manifest", "sitemap", "robots", "favicon", "icon", "apple", "static", "next", "public",
+  "app", "www", "torli", "support", "help", "terms", "privacy", "about", "contact",
+]);
+
 const PASSWORD_ERROR =
   "הסיסמה חייבת להכיל לפחות 8 תווים, אות גדולה, אות קטנה, ספרה ותו מיוחד (!@#$%^&* וכו')";
 
@@ -200,6 +208,13 @@ export async function POST(request: NextRequest) {
 
     let finalSlug =
       typeof slug === "string" ? slug.trim().toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 40) : "";
+    // A chosen address must be usable: not a one-letter link, and not a word the site itself uses
+    if (finalSlug && (finalSlug.length < 3 || RESERVED_SLUGS.has(finalSlug))) {
+      return NextResponse.json(
+        { error: "כתובת הקישור צריכה להיות באורך של 3 תווים לפחות (אותיות באנגלית ומספרים), ולא מילה שמורה. אנא בחרו אחרת." },
+        { status: 400 }
+      );
+    }
     if (!finalSlug) finalSlug = generateRandomSlug(6);
 
     let existing = await getBusinessBySlug(finalSlug);

@@ -325,10 +325,10 @@ function BookingMock({ kind, picked, onPick }: { kind: Kind; picked: number; onP
                     <span className="block text-base font-bold leading-snug text-ink-900">{s.name}</span>
                     <span className="mt-1 flex items-center gap-2 text-xs text-ink-500">
                       <span className="flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5 text-ink-400" />
+                        <Clock className="h-3.5 w-3.5 text-ink-500" />
                         {s.minutes} דקות
                       </span>
-                      {s.rest > 0 && <span className="text-ink-400">(+{s.rest} מנוחה)</span>}
+                      {s.rest > 0 && <span className="text-ink-500">(+{s.rest} מנוחה)</span>}
                     </span>
                   </span>
                 </span>

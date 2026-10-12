@@ -26,6 +26,17 @@ export function rateLimit(key: string, limit: number, windowMs: number): boolean
   return b.count <= limit;
 }
 
+/** True while the key is over its limit. Does not count as an attempt. */
+export function isRateLimited(key: string, limit: number): boolean {
+  const b = buckets.get(key);
+  return !!b && b.reset >= Date.now() && b.count >= limit;
+}
+
+/** Forget a key, e.g. after a successful login. */
+export function clearRateLimit(key: string): void {
+  buckets.delete(key);
+}
+
 export function tooMany() {
   return new Response(JSON.stringify({ error: "יותר מדי בקשות. נסו שוב בעוד מספר דקות." }), {
     status: 429,

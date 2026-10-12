@@ -270,7 +270,7 @@ export const StatsSection: React.FC<StatsSectionProps> = ({
           </div>
 
           {stats.confirmedAppointmentsList.length === 0 ? (
-            <div className="text-center py-8 text-slate-400 text-xs">
+            <div className="text-center py-8 text-ink-500 text-xs">
               אין תורים שנקבעו להיום. לחץ על כפתור ה-&quot;+&quot; הצף כדי להוסיף תור מהיר!
             </div>
           ) : (
@@ -290,7 +290,7 @@ export const StatsSection: React.FC<StatsSectionProps> = ({
                         <div className="font-extrabold text-slate-900 text-sm">
                           {app.client?.first_name} {app.client?.last_name}
                         </div>
-                        <div className="text-slate-400 text-[11px] font-medium">
+                        <div className="text-ink-500 text-[11px] font-medium">
                           {s?.name || "טיפול כללי"}
                         </div>
                       </div>
@@ -321,12 +321,12 @@ export const StatsSection: React.FC<StatsSectionProps> = ({
               <Scissors className="w-4 h-4 text-indigo-600" />
               <h3 className="text-sm font-extrabold text-slate-900">השירותים המבוקשים ביותר</h3>
             </div>
-            <span className="text-xs text-slate-400 font-medium">לפי כמות תורים</span>
+            <span className="text-xs text-ink-500 font-medium">לפי כמות תורים</span>
           </div>
 
           <div className="space-y-3">
             {stats.topServices.length === 0 ? (
-              <div className="text-center py-6 text-xs text-slate-400">טרם נקבעו תורים בתקופה זו</div>
+              <div className="text-center py-6 text-xs text-ink-500">טרם נקבעו תורים בתקופה זו</div>
             ) : (
               stats.topServices.slice(0, 5).map((srv, idx) => {
                 const percent = stats.confirmedCount
@@ -361,7 +361,7 @@ export const StatsSection: React.FC<StatsSectionProps> = ({
               <BarChart3 className="w-4 h-4 text-emerald-600" />
               <h3 className="text-sm font-extrabold text-slate-900">התפלגות ימי עבודה עמוסים</h3>
             </div>
-            <span className="text-xs text-slate-400 font-medium">תורים מאושרים</span>
+            <span className="text-xs text-ink-500 font-medium">תורים מאושרים</span>
           </div>
 
           <div className="grid grid-cols-7 gap-1.5 pt-4 text-center items-end h-44">

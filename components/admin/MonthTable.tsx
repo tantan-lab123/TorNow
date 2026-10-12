@@ -167,7 +167,7 @@ export function MonthTable({
                     isToday
                       ? "bg-lime text-lime-ink"
                       : past
-                        ? "text-ink-400"
+                        ? "text-ink-500"
                         : closedByOwner
                           ? "text-danger-700"
                           : "text-ink-900"
@@ -176,7 +176,7 @@ export function MonthTable({
                   {format(day, "d")}
                 </span>
                 {showHebrewDates && (
-                  <span className="pt-1 text-[10px] font-bold leading-none text-ink-400">{getHebrewDayLetter(day)}</span>
+                  <span className="pt-1 text-[10px] font-bold leading-none text-ink-500">{getHebrewDayLetter(day)}</span>
                 )}
               </span>
               {holiday && (
@@ -189,7 +189,7 @@ export function MonthTable({
                   <span
                     className={cn(
                       "text-[10px] font-bold leading-none sm:text-[11px]",
-                      closedByOwner ? "text-danger-700" : "text-ink-400"
+                      closedByOwner ? "text-danger-700" : "text-ink-500"
                     )}
                   >
                     סגור

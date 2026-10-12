@@ -79,7 +79,7 @@ export const ProductsSection: React.FC<ProductsSectionProps> = ({
       {/* Top search & Action bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Search className="w-4 h-4 text-ink-500 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             placeholder="חיפוש מוצר לפי שם, מק&quot;ט או קטגוריה..."
@@ -90,7 +90,7 @@ export const ProductsSection: React.FC<ProductsSectionProps> = ({
           {searchTerm && (
             <button
               onClick={() => setSearchTerm("")}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-500 hover:text-slate-600"
             >
               <X className="w-4 h-4" />
             </button>
@@ -145,7 +145,7 @@ export const ProductsSection: React.FC<ProductsSectionProps> = ({
                   </div>
                   <div className="flex-1 text-right">
                     <div className="font-extrabold text-slate-900 text-sm">{product.name}</div>
-                    <div className="text-xs text-slate-400 font-medium mt-0.5">
+                    <div className="text-xs text-ink-500 font-medium mt-0.5">
                       {product.category} {product.sku && `• מק״ט: ${product.sku}`}
                     </div>
                   </div>
@@ -153,15 +153,15 @@ export const ProductsSection: React.FC<ProductsSectionProps> = ({
 
                 <div className="flex items-center justify-between py-2 border-y border-slate-100 text-xs">
                   <div>
-                    <span className="text-slate-400">עלות: </span>
+                    <span className="text-ink-500">עלות: </span>
                     <span className="font-bold text-slate-700">₪{product.cost_price}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400">מחיר מכירה: </span>
+                    <span className="text-ink-500">מחיר מכירה: </span>
                     <span className="font-extrabold text-indigo-600 text-sm">₪{product.sale_price}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400">רווח: </span>
+                    <span className="text-ink-500">רווח: </span>
                     <span className="font-bold text-emerald-600">+₪{profit}</span>
                   </div>
                 </div>

@@ -88,7 +88,7 @@ export function OwnerTour() {
                 className="group relative bg-paper px-4 py-4 text-right lg:border-b lg:border-ink-200 lg:bg-transparent lg:px-0 lg:py-7"
               >
                 <span className="flex items-baseline gap-3">
-                  <span className={cn("text-xs font-bold tabular-nums", on ? "text-brand-600" : "text-ink-400")}>
+                  <span className={cn("text-xs font-bold tabular-nums", on ? "text-brand-600" : "text-ink-500")}>
                     0{i + 1}
                   </span>
                   <span

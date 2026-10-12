@@ -248,7 +248,7 @@ export default function CancelAppointmentPage() {
           <Card className="p-6 text-right space-y-5">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
-                <span className="text-xs text-slate-400 block">סטטוס:</span>
+                <span className="text-xs text-ink-500 block">סטטוס:</span>
                 <Badge variant="success">מאושר</Badge>
               </div>
               <div className="text-right">
