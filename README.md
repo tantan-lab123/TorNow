@@ -16,6 +16,15 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Database
+
+Without Supabase env vars, `npm run dev` runs on built-in sample data. Production refuses to read or
+write anything without them instead of falling back to memory (see `lib/db/index.ts`).
+
+The full schema is `supabase/migrations/`, applied in file-name order. For a new Supabase project,
+run them in that order in the SQL editor, or `supabase db push`. `supabase/seed.sql` adds two demo
+businesses and is only for local databases.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
