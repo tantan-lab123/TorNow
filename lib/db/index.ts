@@ -796,6 +796,27 @@ export async function blockTimeSlot({
   });
 }
 
+/** Removes a block of blocked time for good. Customer appointments are never deleted this way. */
+export async function deleteBlockedTime(id: string): Promise<boolean> {
+  if (isSupabaseConfigured && supabaseAdmin) {
+    const { data, error } = await supabaseAdmin
+      .from("appointments")
+      .delete()
+      .eq("id", id)
+      .is("service_id", null)
+      .like("notes", `${BLOCK_NOTE_PREFIX}%`)
+      .select("id");
+    if (error) throw error;
+    return (data?.length || 0) > 0;
+  }
+  const idx = db.appointments.findIndex(
+    (a) => a.id === id && !a.service_id && !!a.notes?.startsWith(BLOCK_NOTE_PREFIX)
+  );
+  if (idx === -1) return false;
+  db.appointments.splice(idx, 1);
+  return true;
+}
+
 // ==============================================================================
 // BACKGROUND REMINDER WORKER SUPPORT
 // ==============================================================================

@@ -15,6 +15,8 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { formatHebrewDate, formatTime, toInternationalPhone, triggerHaptic } from "@/lib/utils";
 import { format, startOfToday } from "date-fns";
+import { alertDialog } from "@/lib/dialogs";
+import { israelDateString } from "@/lib/booking/slotGenerator";
 
 interface Slot {
   startTime: string;
@@ -90,7 +92,7 @@ export default function CancelAppointmentPage() {
         if (data.blocked) {
           setBlockedReason(data.error);
         } else {
-          alert(data.error || "שגיאה בביטול התור");
+          await alertDialog(data.error || "שגיאה בביטול התור");
         }
         setIsCancelling(false);
         return;
@@ -100,7 +102,7 @@ export default function CancelAppointmentPage() {
       setAppointment((prev) => (prev ? { ...prev, status: "cancelled" } : null));
     } catch (err) {
       console.error("Cancel error:", err);
-      alert("שגיאה בביטול התור");
+      await alertDialog("שגיאה בביטול התור");
     } finally {
       setIsCancelling(false);
     }
@@ -323,7 +325,10 @@ export default function CancelAppointmentPage() {
                       onClick={() => {
                         setConfirmCancel(false);
                         setMoveOpen(true);
-                        loadMoveSlots(moveDate);
+                        // start from the day of the current booking (never a day in the past)
+                        const today = format(startOfToday(), "yyyy-MM-dd");
+                        const current = details?.start_time ? israelDateString(details.start_time) : today;
+                        loadMoveSlots(current < today ? today : current);
                       }}
                     >
                       <span>שנה מועד</span>

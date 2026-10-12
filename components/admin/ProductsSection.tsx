@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { triggerHaptic } from "@/lib/utils";
+import { confirmDialog } from "@/lib/dialogs";
 
 interface ProductsSectionProps {
   products: Product[];
@@ -129,9 +130,9 @@ export const ProductsSection: React.FC<ProductsSectionProps> = ({
                     {onDeleteProduct && (
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={async () => {
                           triggerHaptic(20);
-                          if (confirm(`האם אתה בטוח שברצונך למחוק את המוצר ״${product.name}״?`)) {
+                          if (await confirmDialog(`האם אתה בטוח שברצונך למחוק את המוצר ״${product.name}״?`, { confirmLabel: "למחוק", danger: true })) {
                             onDeleteProduct(product.id);
                           }
                         }}

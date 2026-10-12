@@ -23,6 +23,8 @@ import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { BackupAndAlerts } from "@/components/admin/BackupAndAlerts";
 import { triggerHaptic } from "@/lib/utils";
+import { alertDialog, confirmDialog } from "@/lib/dialogs";
+import { qrDataUrl } from "@/lib/qr";
 
 /**
  * Client-side canvas image compression - 100% free, zero external API keys needed
@@ -154,10 +156,17 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
     ? `${window.location.origin}/${business.slug}`
     : `https://torli-eight.vercel.app/${business.slug}`;
 
-  // QR Code URL using high-quality Google Charts API or quick SVG
-  const qrCodeImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(
-    bookingUrl
-  )}&bgcolor=ffffff&color=2a2758&qzone=2`;
+  // The counter QR is drawn here in the browser (no third-party QR service)
+  const [qrCodeImgUrl, setQrCodeImgUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    qrDataUrl(bookingUrl, { size: 640, margin: 2 }).then((url) => {
+      if (alive) setQrCodeImgUrl(url);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [bookingUrl]);
 
   const handleImageUpload = async (file: File, type: "logo" | "cover") => {
     try {
@@ -172,7 +181,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
       triggerHaptic(20);
     } catch (err) {
       console.error("Image upload error:", err);
-      alert("שגיאה בטעינת התמונה");
+      await alertDialog("שגיאה בטעינת התמונה");
     }
   };
 
@@ -214,6 +223,8 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
 
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2500);
+    } catch (err) {
+      await alertDialog(err instanceof Error && err.message ? err.message : "לא הצלחנו לשמור את ההגדרות. נסו שוב.");
     } finally {
       setIsSaving(false);
     }
@@ -234,6 +245,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
     triggerHaptic(20);
     const esc = (t: string) =>
       t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    if (!qrCodeImgUrl) return;
     const win = window.open("", "_blank");
     if (!win) return;
     win.document.write(`
@@ -762,17 +774,21 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
             </div>
 
             {/* QR Card Preview */}
-            <div className="inline-block p-6 bg-white rounded-3xl border-2 border-dashed border-indigo-200 shadow-lg mx-auto">
-              <div className="text-xs font-extrabold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full inline-block mb-3">
+            <div className="inline-block p-6 bg-white rounded-3xl border-2 border-dashed border-brand-300 shadow-lg mx-auto">
+              <div className="text-xs font-extrabold text-brand-700 bg-brand-50 px-3 py-1 rounded-full inline-block mb-3">
                 {business.name}
               </div>
               <div className="bg-white p-2 rounded-2xl">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={qrCodeImgUrl}
-                  alt="QR Code"
-                  className="w-48 h-48 mx-auto rounded-xl shadow-xs"
-                />
+                {qrCodeImgUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={qrCodeImgUrl}
+                    alt="קוד QR לעמוד ההזמנה"
+                    className="w-48 h-48 mx-auto rounded-xl shadow-xs"
+                  />
+                ) : (
+                  <div className="w-48 h-48 mx-auto rounded-xl bg-ink-100 animate-pulse" aria-hidden="true" />
+                )}
               </div>
               <div className="text-[11px] font-mono text-slate-400 mt-3 truncate max-w-xs mx-auto" dir="ltr">
                 {bookingUrl}
@@ -799,16 +815,16 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
           const syncFeedUrl = `${origin}/api/calendar/${business.slug}?t=${business.calendar_token ?? ""}`;
 
           const handleRotateLink = async () => {
-            if (
-              !confirm(
-                "להחליף את קישור היומן? כל יומן שכבר מחובר, שלך ושל המנהלים, יפסיק להתעדכן ויהיה צריך לחבר אותו מחדש עם הקישור החדש."
-              )
-            ) {
-              return;
-            }
+            const ok = await confirmDialog(
+              "כל יומן שכבר מחובר, שלך ושל המנהלים, יפסיק להתעדכן ויהיה צריך לחבר אותו מחדש עם הקישור החדש.",
+              { title: "להחליף את קישור היומן?", confirmLabel: "להחליף" }
+            );
+            if (!ok) return;
             setRotatingLink(true);
             try {
               await onUpdateSettings({ rotate_calendar_link: true });
+            } catch (err) {
+              await alertDialog(err instanceof Error ? err.message : "לא הצלחנו להחליף את הקישור. נסו שוב.");
             } finally {
               setRotatingLink(false);
             }

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { formatPhone, triggerHaptic } from "@/lib/utils";
+import { confirmDialog } from "@/lib/dialogs";
 
 export interface TeamMember {
   id: string;
@@ -163,9 +164,9 @@ export const EmployeesSection: React.FC<EmployeesSectionProps> = ({
                 </div>
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     triggerHaptic(20);
-                    if (confirm(`האם אתה בטוח שברצונך למחוק את העובד ״${emp.name}״?`)) {
+                    if (await confirmDialog(`האם אתה בטוח שברצונך למחוק את העובד ״${emp.name}״?`, { confirmLabel: "למחוק", danger: true })) {
                       run(() => onDeleteEmployee(emp.id));
                     }
                   }}
@@ -229,8 +230,8 @@ export const EmployeesSection: React.FC<EmployeesSectionProps> = ({
 
               {emp.has_login && (
                 <button
-                  onClick={() => {
-                    if (confirm("להסיר את הכניסה של העובד למערכת?")) {
+                  onClick={async () => {
+                    if (await confirmDialog("להסיר את הכניסה של העובד למערכת?", { confirmLabel: "להסיר", danger: true })) {
                       run(() => onUpdateEmployee(emp.id, { remove_login: true }));
                     }
                   }}

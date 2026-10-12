@@ -13,7 +13,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
-import { triggerHaptic } from "@/lib/utils";
+import { formatDayString, triggerHaptic } from "@/lib/utils";
 
 interface WorkScheduleSectionProps {
   business: Business;
@@ -142,7 +142,7 @@ export const WorkScheduleSection: React.FC<WorkScheduleSectionProps> = ({
               return (
                 <div
                   key={day}
-                  className={`p-3 rounded-2xl border transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+                  className={`p-3 rounded-2xl border transition-all flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center justify-between gap-3 ${
                     current.active ? "bg-white border-slate-200" : "bg-slate-50 border-slate-200/60 opacity-65"
                   }`}
                 >
@@ -196,6 +196,65 @@ export const WorkScheduleSection: React.FC<WorkScheduleSectionProps> = ({
                       />
                     </div>
                   )}
+
+                  {current.active && (
+                    <div className="basis-full flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2.5 text-xs">
+                      <label className="flex items-center gap-2 font-bold text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={!!current.lunch_break?.active}
+                          onChange={(e) => {
+                            const lb = current.lunch_break;
+                            setHoursState({
+                              ...hoursState,
+                              [day]: {
+                                ...current,
+                                lunch_break: {
+                                  start: lb?.start || "13:00",
+                                  end: lb?.end || "14:00",
+                                  active: e.target.checked,
+                                },
+                              },
+                            });
+                          }}
+                          className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <span>הפסקה (בלי תורים)</span>
+                      </label>
+                      {current.lunch_break?.active ? (
+                        <>
+                          <span className="text-slate-400">מ:</span>
+                          <input
+                            type="time"
+                            aria-label={`תחילת הפסקה, ${HEBREW_DAYS[day]}`}
+                            value={current.lunch_break.start}
+                            onChange={(e) => {
+                              setHoursState({
+                                ...hoursState,
+                                [day]: { ...current, lunch_break: { ...current.lunch_break!, start: e.target.value } },
+                              });
+                            }}
+                            className="px-2 py-1 rounded-xl border border-slate-200 bg-slate-50 font-mono text-xs text-center"
+                          />
+                          <span className="text-slate-400">עד:</span>
+                          <input
+                            type="time"
+                            aria-label={`סוף הפסקה, ${HEBREW_DAYS[day]}`}
+                            value={current.lunch_break.end}
+                            onChange={(e) => {
+                              setHoursState({
+                                ...hoursState,
+                                [day]: { ...current, lunch_break: { ...current.lunch_break!, end: e.target.value } },
+                              });
+                            }}
+                            className="px-2 py-1 rounded-xl border border-slate-200 bg-slate-50 font-mono text-xs text-center"
+                          />
+                        </>
+                      ) : (
+                        <span className="text-slate-400">אין הפסקה ביום הזה</span>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -245,7 +304,7 @@ export const WorkScheduleSection: React.FC<WorkScheduleSectionProps> = ({
 
                   <div className="text-right">
                     <div className="font-extrabold text-slate-800">{ovr.reason}</div>
-                    <div className="text-[11px] text-slate-500 font-mono mt-0.5">{ovr.date}</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">{formatDayString(ovr.date)}</div>
                   </div>
                 </div>
               ))
