@@ -14,6 +14,7 @@ import {
   Image as ImageIcon,
   Trash2,
   AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 import { Business, BusinessSettings } from "@/lib/types";
 import { Card } from "@/components/ui/Card";
@@ -68,7 +69,7 @@ function compressImage(
 interface SettingsSectionProps {
   business: Business;
   slotInterval: number;
-  onUpdateSettings: (settings: Partial<Business>) => Promise<void>;
+  onUpdateSettings: (settings: Partial<Business> & { rotate_calendar_link?: boolean }) => Promise<void>;
   onDeleteBusiness?: () => Promise<void>;
   role?: "owner" | "manager" | "staff";
 }
@@ -82,6 +83,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
 }) => {
   const [subTab, setSubTab] = useState<"general" | "controls" | "qrcode" | "sync">("general");
   const [copiedSyncUrl, setCopiedSyncUrl] = useState(false);
+  const [rotatingLink, setRotatingLink] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
@@ -270,7 +272,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
       <div className="flex bg-slate-200/80 p-1 rounded-2xl max-w-xl mx-auto overflow-x-auto no-scrollbar">
         <button
           onClick={() => setSubTab("general")}
-          className={`flex-1 min-w-[110px] py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
+          className={`flex-1 min-w-[110px] min-h-[44px] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
             subTab === "general" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-600 hover:text-slate-900"
           }`}
         >
@@ -280,7 +282,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
 
         <button
           onClick={() => setSubTab("controls")}
-          className={`flex-1 min-w-[110px] py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
+          className={`flex-1 min-w-[110px] min-h-[44px] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
             subTab === "controls" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-600 hover:text-slate-900"
           }`}
         >
@@ -290,7 +292,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
 
         <button
           onClick={() => setSubTab("qrcode")}
-          className={`flex-1 min-w-[100px] py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
+          className={`flex-1 min-w-[100px] min-h-[44px] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
             subTab === "qrcode" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-600 hover:text-slate-900"
           }`}
         >
@@ -300,7 +302,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
 
         <button
           onClick={() => setSubTab("sync")}
-          className={`flex-1 min-w-[120px] py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
+          className={`flex-1 min-w-[120px] min-h-[44px] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
             subTab === "sync" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-600 hover:text-slate-900"
           }`}
         >
@@ -796,6 +798,22 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
           const origin = typeof window !== "undefined" ? window.location.origin : "https://torli-eight.vercel.app";
           const syncFeedUrl = `${origin}/api/calendar/${business.slug}?t=${business.calendar_token ?? ""}`;
 
+          const handleRotateLink = async () => {
+            if (
+              !confirm(
+                "להחליף את קישור היומן? כל יומן שכבר מחובר, שלך ושל המנהלים, יפסיק להתעדכן ויהיה צריך לחבר אותו מחדש עם הקישור החדש."
+              )
+            ) {
+              return;
+            }
+            setRotatingLink(true);
+            try {
+              await onUpdateSettings({ rotate_calendar_link: true });
+            } finally {
+              setRotatingLink(false);
+            }
+          };
+
           const handleCopySync = async () => {
             triggerHaptic(20);
             try {
@@ -830,7 +848,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition-colors flex items-center gap-1.5 shadow-xs whitespace-nowrap"
+                  className="px-4 min-h-[44px] rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition-colors flex items-center gap-1.5 shadow-xs whitespace-nowrap"
                 >
                   <ExternalLink className="w-4 h-4" />
                   <span>הוסף ישירות ל-Google Calendar</span>
@@ -850,7 +868,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
                     className="flex-1 h-11 rounded-xl border border-slate-200 px-3 text-xs bg-slate-50 font-mono text-slate-700 text-left select-all"
                     dir="ltr"
                   />
-                  <Button type="button" onClick={handleCopySync} className="h-11 shadow-xs">
+                  <Button type="button" onClick={handleCopySync} className="h-11 shadow-xs whitespace-nowrap">
                     {copiedSyncUrl ? (
                       <>
                         <Check className="w-4 h-4 ml-1 text-emerald-300" />
@@ -867,6 +885,26 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
                 <p className="text-[11px] text-slate-400">
                   פורמט סטנדרטי בינלאומי התומך ב-Google Calendar, Apple iCal, Microsoft Outlook.
                 </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  {role === "owner"
+                    ? "כל מנהל מקבל קישור אישי משלו, שמפסיק לעבוד כשהוא עוזב. אם הקישור שלך הגיע למישהו שלא צריך אותו, אפשר להחליף אותו."
+                    : "הקישור הזה אישי לך, והוא יפסיק לעבוד אם לא תהיה עוד מנהל בעסק."}
+                </p>
+                {role === "owner" && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleRotateLink}
+                    disabled={rotatingLink}
+                    className="h-11 whitespace-nowrap"
+                  >
+                    <RefreshCw className="w-4 h-4 ml-1.5" />
+                    <span>{rotatingLink ? "מחליף..." : "החלפת הקישור"}</span>
+                  </Button>
+                )}
               </div>
 
               {/* 3 Steps Guide */}

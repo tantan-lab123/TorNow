@@ -145,15 +145,22 @@ export function verifyPassword(
 }
 
 // ------------------------------------------------------------ calendar feed
-export function calendarToken(businessId: string): string {
-  return crypto
-    .createHmac("sha256", getSecret())
-    .update(`calendar:${businessId}`)
-    .digest("hex")
-    .slice(0, 40);
+// The owner's feed link belongs to the business. Each manager gets a link of their own, which
+// stops working once they are deactivated, removed or no longer a manager. Raising the
+// business's calendar_version (the owner's "new link" button) replaces every link at once.
+export function calendarToken(businessId: string, version = 0, staffId?: string): string {
+  const parts = [`calendar:${businessId}`];
+  if (version) parts.push(`v${version}`);
+  if (staffId) parts.push(`staff:${staffId}`);
+  return crypto.createHmac("sha256", getSecret()).update(parts.join(":")).digest("hex").slice(0, 40);
 }
-export function verifyCalendarToken(businessId: string, token: string | null): boolean {
-  return !!token && safeEqual(token, calendarToken(businessId));
+export function verifyCalendarToken(
+  token: string | null,
+  businessId: string,
+  version = 0,
+  staffId?: string
+): boolean {
+  return !!token && safeEqual(token, calendarToken(businessId, version, staffId));
 }
 
 // ----------------------------------------------------- cron / shared secret
@@ -189,15 +196,21 @@ export function verifyGoogleAccessToken(accessToken: unknown) {
 /** Fields safe to show to anyone (public booking page). */
 export function toPublicBusiness(b: Business): Business {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { password, pin, google_id, owner_email, calendar_token, ...rest } = b;
+  const { password, pin, google_id, owner_email, calendar_token, calendar_version, ...rest } = b;
   return { ...rest, settings: dropLegacyPrefills(rest.settings) } as Business;
 }
 
 /** Fields for the logged-in owner: never the password hash / pin / google id. */
-export function toOwnerBusiness(b: Business, role: Role = "owner"): Business {
+export function toOwnerBusiness(b: Business, role: Role = "owner", staffId?: string): Business {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { password, pin, google_id, ...rest } = b;
+  const { password, pin, google_id, calendar_version, ...rest } = b;
   const clean = { ...rest, settings: dropLegacyPrefills(rest.settings) };
-  // the calendar-feed secret is only for the owner and managers
-  return (role === "staff" ? clean : { ...clean, calendar_token: calendarToken(b.id) }) as Business;
+  // the calendar-feed secret is only for the owner and managers, each manager with their own
+  const token =
+    role === "owner"
+      ? calendarToken(b.id, calendar_version)
+      : role === "manager" && staffId
+        ? calendarToken(b.id, calendar_version, staffId)
+        : undefined;
+  return (token ? { ...clean, calendar_token: token } : clean) as Business;
 }
