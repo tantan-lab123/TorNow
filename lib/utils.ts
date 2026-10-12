@@ -454,3 +454,20 @@ export function generateRandomSlug(length = 6): string {
   }
   return result;
 }
+
+/**
+ * A calendar day stored as "yyyy-MM-dd" (no time, no zone), shown as e.g. "יום חמישי, 15 באוקטובר".
+ * Parsed as a local date so it never slips a day.
+ */
+export function formatDayString(day: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!m) return day;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return format(d, "EEEE, d בMMMM", { locale: he });
+}
+
+/** Hebrew count of appointments: "אין תורים", "תור אחד", "2 תורים". */
+export function countAppointments(n: number): string {
+  if (n === 0) return "אין תורים";
+  return n === 1 ? "תור אחד" : `${n} תורים`;
+}

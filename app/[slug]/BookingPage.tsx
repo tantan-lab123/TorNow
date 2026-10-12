@@ -53,6 +53,7 @@ import {
   isToday,
 } from "date-fns";
 import { he } from "date-fns/locale";
+import { alertDialog } from "@/lib/dialogs";
 
 const STORAGE_KEY = "schedule_saved_client_v1";
 // Booking progress is parked here while the customer is away signing in with Google.
@@ -349,7 +350,7 @@ export default function BookingPage() {
       console.error("Google sign-in error:", err);
       sessionStorage.removeItem(PENDING_KEY);
       setIsGoogleLoading(false);
-      alert("ההתחברות עם Google אינה זמינה כרגע. ניתן להמשיך כאורח.");
+      void alertDialog("ההתחברות עם Google אינה זמינה כרגע. ניתן להמשיך כאורח.");
     }
   };
 
@@ -540,7 +541,7 @@ export default function BookingPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.error || "אירעה שגיאה בקביעת התור. אנא בחר מועד אחר.");
+        await alertDialog(data.error || "אירעה שגיאה בקביעת התור. אנא בחר מועד אחר.");
         setIsSubmitting(false);
         return;
       }
@@ -574,7 +575,7 @@ export default function BookingPage() {
       });
     } catch (err) {
       console.error("Booking error:", err);
-      alert("שגיאת תקשורת. אנא נסה שוב.");
+      await alertDialog("שגיאת תקשורת. אנא נסה שוב.");
     } finally {
       setIsSubmitting(false);
     }

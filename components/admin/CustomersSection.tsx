@@ -35,7 +35,8 @@ interface CustomersSectionProps {
   appointments: Appointment[];
   services: Service[];
   businessId: string;
-  onAddClient?: (client: Partial<Client>) => void;
+  /** Resolves with the server's counts so a duplicate phone number can be reported. */
+  onAddClient?: (client: Partial<Client>) => Promise<{ added: number; skipped: number } | void> | void;
   onUpdateClientNotes?: (clientId: string, notes: string) => void;
   onImportContacts?: (
     contacts: RawContact[]
@@ -174,7 +175,7 @@ export const CustomersSection: React.FC<CustomersSectionProps> = ({
     });
   }, [clients, searchTerm]);
 
-  const handleCreateClient = (e: React.FormEvent) => {
+  const handleCreateClient = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFirstName.trim() || !newPhone.trim()) return;
 
@@ -198,7 +199,12 @@ export const CustomersSection: React.FC<CustomersSectionProps> = ({
     };
 
     if (onAddClient) {
-      onAddClient(newClient);
+      const result = await onAddClient(newClient);
+      if (result && result.added === 0 && result.skipped > 0) {
+        setNewPhoneError("כבר יש לקוח עם המספר הזה ברשימה. חפשו אותו כדי לעדכן את ההערות שלו.");
+        triggerHaptic(40);
+        return;
+      }
     }
 
     setIsAddModalOpen(false);

@@ -49,6 +49,7 @@ import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import {
   formatHebrewDate,
+  countAppointments,
   formatTime,
   formatPhone,
   toInternationalPhone,
@@ -88,6 +89,7 @@ import { MarketingSection } from "@/components/admin/MarketingSection";
 import { CashRegisterSection } from "@/components/admin/CashRegisterSection";
 import { WorkScheduleSection } from "@/components/admin/WorkScheduleSection";
 import { ServicesSection } from "@/components/admin/ServicesSection";
+import { alertDialog, confirmDialog } from "@/lib/dialogs";
 import { SettingsSection } from "@/components/admin/SettingsSection";
 import {
   DEFAULT_EMPLOYEES,
@@ -315,9 +317,9 @@ export default function AdminDashboardPage() {
 
       
       try {
-        const res = await fetch("/api/auth/session");
-        if (res.ok) {
-          const sess = await res.json();
+        const res = await fetch("/api/auth/session?probe=1");
+        const sess = res.ok ? await res.json() : null;
+        if (sess?.signedIn) {
           const biz = sess.business;
           setRole(sess.role || "owner");
           setStaffName(sess.staff?.name);
@@ -534,14 +536,14 @@ export default function AdminDashboardPage() {
       if (res.ok) {
         triggerHaptic(50);
         await handleLogout();
-        alert("העסק וכל נתוניו נמחקו לצמיתות מהמערכת.");
+        await alertDialog("העסק וכל נתוניו נמחקו לצמיתות מהמערכת.");
       } else {
         const d = await res.json();
-        alert(d.error || "שגיאה במחיקת העסק");
+        await alertDialog(d.error || "שגיאה במחיקת העסק");
       }
     } catch (err) {
       console.error("Error deleting business:", err);
-      alert("שגיאת תקשורת במחיקת העסק");
+      await alertDialog("שגיאת תקשורת במחיקת העסק");
     } finally {
       setIsLoading(false);
     }
@@ -756,15 +758,17 @@ export default function AdminDashboardPage() {
 
   // Daily Stats KPI
   const dailyStats = useMemo(() => {
-    const confirmed = dailyAppointments.filter((a) => a.status === "confirmed");
+    // blocked time is the business's own, not a booking: it never counts as one
+    const bookings = dailyAppointments.filter((a) => !isBlockedTime(a));
+    const confirmed = bookings.filter((a) => a.status === "confirmed");
     const totalIncome = confirmed.reduce(
       (sum, a) => sum + (Number(a.service?.price) || 0),
       0
     );
     return {
-      total: dailyAppointments.length,
+      total: bookings.length,
       confirmed: confirmed.length,
-      cancelled: dailyAppointments.filter((a) => a.status === "cancelled").length,
+      cancelled: bookings.filter((a) => a.status === "cancelled").length,
       revenue: totalIncome,
     };
   }, [dailyAppointments]);
@@ -848,7 +852,7 @@ export default function AdminDashboardPage() {
   };
 
   // Closing a day does not cancel what is already booked on it, so say so first.
-  const confirmCloseDays = (dayStrs: string[]) => {
+  const confirmCloseDays = async (dayStrs: string[]): Promise<boolean> => {
     const days = new Set(dayStrs);
     const booked = appointments.filter(
       (a) =>
@@ -857,10 +861,11 @@ export default function AdminDashboardPage() {
         days.has(format(new Date(a.start_time), "yyyy-MM-dd"))
     ).length;
     if (booked === 0) return true;
-    return confirm(
+    return confirmDialog(
       booked === 1
         ? "יש תור אחד בימים שנבחרו. הסגירה לא מבטלת אותו ולא מודיעה ללקוח, כדאי לדבר איתו. לסגור בכל זאת?"
-        : `יש ${booked} תורים בימים שנבחרו. הסגירה לא מבטלת אותם ולא מודיעה ללקוחות, כדאי לדבר איתם. לסגור בכל זאת?`
+        : `יש ${booked} תורים בימים שנבחרו. הסגירה לא מבטלת אותם ולא מודיעה ללקוחות, כדאי לדבר איתם. לסגור בכל זאת?`,
+      { confirmLabel: "לסגור בכל זאת", danger: true }
     );
   };
 
@@ -872,13 +877,13 @@ export default function AdminDashboardPage() {
       const start = parseISO(rangeStartDate);
       const end = parseISO(rangeEndDate);
       if (start > end) {
-        alert("תאריך התחלה חייב להיות לפני תאריך סיום");
+        await alertDialog("תאריך התחלה חייב להיות לפני תאריך סיום");
         return;
       }
 
       const days = eachDayOfInterval({ start, end });
       let updatedOverrides = [...editingOverrides];
-      if (action === "close" && !confirmCloseDays(days.map((d) => format(d, "yyyy-MM-dd")))) return;
+      if (action === "close" && !(await confirmCloseDays(days.map((d) => format(d, "yyyy-MM-dd"))))) return;
 
       if (action === "close") {
         for (const d of days) {
@@ -934,7 +939,7 @@ export default function AdminDashboardPage() {
     } else {
       // Close
       const dayStrs = Array.from({ length: daysCount }, (_, i) => format(addDays(date, i), "yyyy-MM-dd"));
-      if (!confirmCloseDays(dayStrs)) return;
+      if (!(await confirmCloseDays(dayStrs))) return;
       for (let i = 0; i < daysCount; i++) {
         const targetD = addDays(date, i);
         const dStr = format(targetD, "yyyy-MM-dd");
@@ -971,7 +976,12 @@ export default function AdminDashboardPage() {
 
   // Cancel appointment handler
   const handleCancelAppointment = async (id: string) => {
-    if (!confirm("האם לבטל את התור? המועד ישתחרר מיד ללקוחות אחרים.")) return;
+    const ok = await confirmDialog("האם לבטל את התור? המועד ישתחרר מיד ללקוחות אחרים.", {
+      confirmLabel: "כן, לבטל את התור",
+      cancelLabel: "לא, להשאיר",
+      danger: true,
+    });
+    if (!ok) return;
     triggerHaptic(25);
 
     try {
@@ -985,6 +995,23 @@ export default function AdminDashboardPage() {
       }
     } catch (err) {
       console.error("Cancel error:", err);
+    }
+  };
+
+  // Remove a block of blocked time (customers waiting for that day are flagged by the server)
+  const handleRemoveBlock = async (id: string) => {
+    triggerHaptic(20);
+    try {
+      const res = await fetch(`/api/appointments/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        await alertDialog(data.error || "לא הצלחנו להסיר את החסימה");
+        return;
+      }
+      fetchAppointments();
+    } catch (err) {
+      console.error("Remove block error:", err);
+      await alertDialog("שגיאה ברשת");
     }
   };
 
@@ -1003,7 +1030,7 @@ export default function AdminDashboardPage() {
     if (walkinPhone.trim()) {
       const phoneCheck = validatePhoneNumber(walkinPhone);
       if (!phoneCheck.isValid) {
-        alert(phoneCheck.error || "מספר טלפון לקוח לא תקין (חייב להכיל 10 ספרות בדיוק)");
+        await alertDialog(phoneCheck.error || "מספר טלפון לקוח לא תקין (חייב להכיל 10 ספרות בדיוק)");
         setIsSubmittingWalkin(false);
         return;
       }
@@ -1033,11 +1060,11 @@ export default function AdminDashboardPage() {
         fetchAppointments();
       } else {
         const data = await res.json();
-        alert(data.error || "שגיאה בהוספת התור");
+        await alertDialog(data.error || "שגיאה בהוספת התור");
       }
     } catch (err) {
       console.error(err);
-      alert("שגיאה ברשת");
+      await alertDialog("שגיאה ברשת");
     } finally {
       setIsSubmittingWalkin(false);
     }
@@ -1073,11 +1100,11 @@ export default function AdminDashboardPage() {
         fetchAppointments();
       } else {
         const data = await res.json();
-        alert(data.error || "שגיאה בחסימת זמן");
+        await alertDialog(data.error || "שגיאה בחסימת זמן");
       }
     } catch (err) {
       console.error(err);
-      alert("שגיאה ברשת");
+      await alertDialog("שגיאה ברשת");
     } finally {
       setIsSubmittingBlock(false);
     }
@@ -1096,7 +1123,7 @@ export default function AdminDashboardPage() {
       fetchAppointments();
     } catch (err) {
       console.error(err);
-      alert("שגיאה בהפעלת מנגנון התזכורות");
+      await alertDialog("שגיאה בהפעלת מנגנון התזכורות");
     } finally {
       setIsReminderRunning(false);
     }
@@ -1896,7 +1923,7 @@ export default function AdminDashboardPage() {
               </div>
 
               <div className="hidden sm:block text-xs font-semibold text-ink-600 text-right whitespace-nowrap">
-                <span>{dailyAppointments.length} תורים ביום הזה</span>
+                <span>{countAppointments(dailyStats.total)} ביום הזה</span>
               </div>
             </div>
             {/* Schedule View Segment Control */}
@@ -2044,7 +2071,7 @@ export default function AdminDashboardPage() {
             {/* Vertical Daily Timeline List */}
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs text-slate-500 px-1">
-                <span>לוח זמנים ({dailyAppointments.length} תורים)</span>
+                <span>לוח זמנים ({countAppointments(dailyStats.total)})</span>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -2148,12 +2175,14 @@ export default function AdminDashboardPage() {
                             )}
                           </div>
 
-                          <div className="text-sm font-medium text-ink-600 mt-0.5">
-                            {app.service?.name || "שירות כללי"}
-                            {app.service?.price ? ` • ₪${app.service.price}` : ""}
-                          </div>
+                          {!isBlockedSlot && (
+                            <div className="text-sm font-medium text-ink-600 mt-0.5">
+                              {app.service?.name || "שירות כללי"}
+                              {app.service?.price ? ` • ₪${app.service.price}` : ""}
+                            </div>
+                          )}
 
-                          {app.notes && (
+                          {app.notes && !isBlockedSlot && (
                             <p className="text-xs text-ink-700 mt-1.5 bg-paper px-2 py-1.5 rounded-md border border-ink-200">
                               {app.notes}
                             </p>
@@ -2233,14 +2262,14 @@ export default function AdminDashboardPage() {
                         </div>
                       )}
 
-                      {(isCancelled || isBlockedSlot) && (
+                      {isBlockedSlot && (
                         <div className="flex justify-end mt-2 pt-2 border-t border-ink-100">
                           <button
-                            onClick={() => handleCancelAppointment(app.id)}
+                            onClick={() => handleRemoveBlock(app.id)}
                             className="m-press min-h-[40px] px-2 text-xs font-semibold text-ink-500 hover:text-danger-600 flex items-center gap-1"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
-                            <span>הסר מהלוח</span>
+                            <span>הסר חסימה</span>
                           </button>
                         </div>
                       )}
@@ -2300,12 +2329,14 @@ export default function AdminDashboardPage() {
               onAddClient={async (newClient) => {
                 // persisted server-side so the customer survives a refresh
                 try {
-                  await fetch("/api/clients", {
+                  const res = await fetch("/api/clients", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ contacts: [newClient] }),
                   });
+                  const result = res.ok ? await res.json().catch(() => null) : null;
                   await loadSavedClients();
+                  return result ? { added: result.added ?? 0, skipped: result.skipped ?? 0 } : undefined;
                 } catch {
                   setCustomClients((prev) => [newClient as Client, ...prev]);
                 }
@@ -2359,29 +2390,45 @@ export default function AdminDashboardPage() {
               services={services}
               businessId={selectedBusiness.id}
               onAddService={async (service) => {
-                await fetch("/api/services", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify(service),
-                });
+                try {
+                  const res = await fetch("/api/services", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(service),
+                  });
+                  if (!res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    return data.error || "לא הצלחנו לשמור את השירות. נסו שוב.";
+                  }
+                } catch {
+                  return "שגיאת תקשורת. נסו שוב.";
+                }
                 fetchAppointments();
               }}
               onEditService={async (service) => {
-                await fetch("/api/services", {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify(service),
-                });
+                try {
+                  const res = await fetch("/api/services", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(service),
+                  });
+                  if (!res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    return data.error || "לא הצלחנו לשמור את השינויים. נסו שוב.";
+                  }
+                } catch {
+                  return "שגיאת תקשורת. נסו שוב.";
+                }
                 fetchAppointments();
               }}
               onDeleteService={async (serviceId) => {
                 const name = services.find((s) => s.id === serviceId)?.name || "השירות";
-                if (!confirm(`למחוק את ״${name}״? אי אפשר לשחזר.`)) return;
+                if (!(await confirmDialog(`למחוק את ״${name}״? אי אפשר לשחזר.`, { confirmLabel: "למחוק", danger: true }))) return;
                 try {
                   const res = await fetch(`/api/services?id=${serviceId}`, { method: "DELETE" });
                   if (!res.ok) {
                     const data = await res.json().catch(() => ({}));
-                    alert(data.error || "שגיאה במחיקת השירות");
+                    await alertDialog(data.error || "שגיאה במחיקת השירות");
                     return;
                   }
                   fetchAppointments();
@@ -2565,10 +2612,12 @@ export default function AdminDashboardPage() {
                     ...updates,
                   }),
                 });
-                if (res.ok) {
-                  const updated = await res.json();
-                  setSelectedBusiness(updated);
+                if (!res.ok) {
+                  const data = await res.json().catch(() => ({}));
+                  throw new Error(data.error || "לא הצלחנו לשמור את ההגדרות. נסו שוב.");
                 }
+                const updated = await res.json();
+                setSelectedBusiness(updated);
               }}
               onDeleteBusiness={role === "owner" ? handleDeleteBusiness : undefined}
               role={role}

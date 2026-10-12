@@ -195,7 +195,7 @@ export function BusinessSwitcher({ liveDemos }: { liveDemos: string[] }) {
           {demo && (
             <Link
               href={`/${demo}`}
-              className="group mt-7 inline-flex items-center gap-1.5 text-[16px] font-bold text-brand-600 hover:text-brand-700"
+              className="group mt-4 inline-flex min-h-11 items-center gap-1.5 text-[16px] font-bold text-brand-600 hover:text-brand-700"
             >
               לפתוח את עמוד ההזמנה של {kind.business.split(" - ")[0]}
               <ChevronLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
