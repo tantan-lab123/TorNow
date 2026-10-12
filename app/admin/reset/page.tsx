@@ -80,7 +80,7 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4" dir="rtl">
+    <main className="min-h-screen bg-slate-50 flex items-center justify-center p-4" dir="rtl">
       <Card className="w-full max-w-md p-6 bg-white border border-slate-200 shadow-md text-right space-y-4">
         <div className="text-center space-y-1">
           <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center mx-auto">
@@ -153,6 +153,6 @@ export default function ResetPasswordPage() {
           </div>
         )}
       </Card>
-    </div>
+    </main>
   );
 }

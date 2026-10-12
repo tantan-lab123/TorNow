@@ -45,6 +45,7 @@ export interface Business {
   google_id?: string; // Google OAuth ID
   pin?: string; // legacy, unused: never returned by the API
   calendar_token?: string; // server-issued, owner-only (calendar feed secret)
+  calendar_version?: number; // server-only: raising it replaces every calendar feed link
   slot_interval_minutes?: number; // 15, 20, 30, 45, 60 (resolution)
   date_overrides?: DateOverride[]; // specific date closures/holidays
   working_hours: WorkingHours;

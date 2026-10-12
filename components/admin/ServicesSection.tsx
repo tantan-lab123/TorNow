@@ -154,7 +154,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
           <button
             onClick={() => setSelectedCategory("all")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            className={`min-h-[44px] px-3 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
               selectedCategory === "all"
                 ? "bg-indigo-600 text-white shadow-xs"
                 : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -166,7 +166,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+              className={`min-h-[44px] px-3 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
                 selectedCategory === cat
                   ? "bg-indigo-600 text-white shadow-xs"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -206,10 +206,10 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2">
                   <button
                     onClick={() => openEdit(service)}
-                    className="p-1.5 text-ink-500 hover:text-indigo-600 hover:bg-slate-50 rounded-lg transition-colors"
+                    className="h-11 w-11 inline-flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-slate-50 rounded-lg transition-colors"
                     title="ערוך שירות"
                   >
                     <Edit2 className="w-4 h-4" />
@@ -217,7 +217,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
                   {onDeleteService && (
                     <button
                       onClick={() => onDeleteService(service.id)}
-                      className="p-1.5 text-ink-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                      className="h-11 w-11 inline-flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                       title="מחק שירות"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -316,12 +316,17 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
                   key={c}
                   type="button"
                   onClick={() => setColorTag(c)}
-                  className={`w-7 h-7 rounded-full transition-transform flex items-center justify-center ${
-                    colorTag === c ? "scale-110 ring-2 ring-indigo-500 ring-offset-2" : "hover:scale-105"
-                  }`}
-                  style={{ backgroundColor: c }}
+                  aria-pressed={colorTag === c}
+                  className="h-11 w-11 flex items-center justify-center"
                 >
-                  {colorTag === c && <Check className="w-3.5 h-3.5 text-white" />}
+                  <span
+                    className={`w-7 h-7 rounded-full transition-transform flex items-center justify-center ${
+                      colorTag === c ? "scale-110 ring-2 ring-indigo-500 ring-offset-2" : "hover:scale-105"
+                    }`}
+                    style={{ backgroundColor: c }}
+                  >
+                    {colorTag === c && <Check className="w-3.5 h-3.5 text-white" />}
+                  </span>
                 </button>
               ))}
             </div>

@@ -1131,10 +1131,10 @@ export default function AdminDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center">
+      <main className="flex flex-col items-center justify-center min-h-screen p-6 text-center">
         <div className="w-10 h-10 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4" />
         <p className="text-sm text-slate-500">טוען לוח ניהול מאובטח...</p>
-      </div>
+      </main>
     );
   }
 
@@ -1143,7 +1143,7 @@ export default function AdminDashboardPage() {
   // =========================================================================
   if (!selectedBusiness) {
     return (
-      <div className="min-h-screen bg-paper flex flex-col justify-center items-center p-4">
+      <main className="min-h-screen bg-paper flex flex-col justify-center items-center p-4">
         <div className="max-w-md w-full space-y-6">
           {/* Brand header */}
           <div className="text-center space-y-3">
@@ -1392,7 +1392,7 @@ export default function AdminDashboardPage() {
                         setGoogleUser(null);
                         setLoginError("");
                       }}
-                      className="text-xs text-emerald-800 hover:text-emerald-950 font-bold underline px-2 py-1 rounded hover:bg-emerald-100/60 transition-colors"
+                      className="inline-flex items-center min-h-[44px] text-xs text-emerald-800 hover:text-emerald-950 font-bold underline px-3 rounded hover:bg-emerald-100/60 transition-colors"
                     >
                       החלף חשבון
                     </button>
@@ -1630,7 +1630,7 @@ export default function AdminDashboardPage() {
             </Card>
           )}
         </div>
-      </div>
+      </main>
     );
   }
 
@@ -1649,7 +1649,7 @@ export default function AdminDashboardPage() {
     };
 
     return (
-      <div className="min-h-screen bg-paper py-10 px-4">
+      <main className="min-h-screen bg-paper py-10 px-4">
         <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in duration-300">
           {/* Header */}
           <div className="text-center space-y-2">
@@ -1685,7 +1685,7 @@ export default function AdminDashboardPage() {
                     saturday: { active: false, open: "00:00", close: "00:00" },
                   });
                 }}
-                className="text-xs font-bold px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-700 transition-colors"
+                className="text-xs font-bold min-h-[44px] px-3 rounded-xl bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-700 transition-colors"
               >
                 שבוע סטנדרטי (א׳-ה׳ 09:00-19:00, ו׳ עד 14:00)
               </button>
@@ -1703,7 +1703,7 @@ export default function AdminDashboardPage() {
                     saturday: { active: false, open: "00:00", close: "00:00" },
                   });
                 }}
-                className="text-xs font-bold px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-700 transition-colors"
+                className="text-xs font-bold min-h-[44px] px-3 rounded-xl bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-700 transition-colors"
               >
                 ימי חול בלבד (א׳-ה׳ 10:00-20:00)
               </button>
@@ -1827,7 +1827,7 @@ export default function AdminDashboardPage() {
             </div>
           </Card>
         </div>
-      </div>
+      </main>
     );
   }
 
@@ -1893,7 +1893,7 @@ export default function AdminDashboardPage() {
                   }}
                   aria-pressed={selectedStaffId === "all"}
                   className={cn(
-                    "m-chip m-press h-10 px-3.5 rounded-md text-sm font-bold whitespace-nowrap border",
+                    "m-chip m-press h-11 px-3.5 rounded-md text-sm font-bold whitespace-nowrap border",
                     selectedStaffId === "all"
                       ? "bg-brand-600 text-white border-brand-600"
                       : "bg-white text-ink-700 border-ink-200"
@@ -1911,7 +1911,7 @@ export default function AdminDashboardPage() {
                     }}
                     aria-pressed={selectedStaffId === emp.id}
                     className={cn(
-                      "m-chip m-press h-10 px-3.5 rounded-md text-sm font-bold flex items-center gap-1 whitespace-nowrap border",
+                      "m-chip m-press h-11 px-3.5 rounded-md text-sm font-bold flex items-center gap-1 whitespace-nowrap border",
                       selectedStaffId === emp.id
                         ? "bg-brand-600 text-white border-brand-600"
                         : "bg-white text-ink-700 border-ink-200"
@@ -1937,7 +1937,7 @@ export default function AdminDashboardPage() {
                 role="radio"
                 aria-checked={scheduleMode === "day"}
                 className={cn(
-                  "m-press flex-1 h-10 rounded-md text-[13px] font-bold flex items-center justify-center gap-1.5",
+                  "m-press flex-1 h-11 rounded-md text-[13px] font-bold flex items-center justify-center gap-1.5",
                   scheduleMode === "day"
                     ? "bg-white text-brand-700 shadow-sm"
                     : "text-ink-600 hover:text-ink-900"
@@ -1955,7 +1955,7 @@ export default function AdminDashboardPage() {
                 role="radio"
                 aria-checked={scheduleMode === "month"}
                 className={cn(
-                  "m-press flex-1 h-10 rounded-md text-[13px] font-bold flex items-center justify-center gap-1.5",
+                  "m-press flex-1 h-11 rounded-md text-[13px] font-bold flex items-center justify-center gap-1.5",
                   scheduleMode === "month"
                     ? "bg-white text-brand-700 shadow-sm"
                     : "text-ink-600 hover:text-ink-900"
@@ -2084,7 +2084,7 @@ export default function AdminDashboardPage() {
                     }}
                     aria-pressed={soundEnabled}
                     className={cn(
-                      "m-press flex items-center gap-1.5 h-9 px-2.5 rounded-md text-xs font-bold border",
+                      "m-press flex items-center gap-1.5 h-11 px-3 rounded-md text-xs font-bold border",
                       soundEnabled
                         ? "bg-success-100 text-success-700 border-success-200"
                         : "bg-white text-ink-500 border-ink-200"
@@ -2101,7 +2101,7 @@ export default function AdminDashboardPage() {
 
                   <button
                     onClick={() => fetchAppointments(false)}
-                    className="m-press flex items-center gap-1 h-9 px-2.5 rounded-md bg-white border border-ink-200 text-ink-700 font-bold"
+                    className="m-press flex items-center gap-1 h-11 px-3 rounded-md bg-white border border-ink-200 text-ink-700 font-bold"
                   >
                     <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
                     <span>רענן</span>
@@ -2200,7 +2200,7 @@ export default function AdminDashboardPage() {
                                 });
                                 fetchAppointments(true);
                               }}
-                              className="mt-2 h-9 rounded-md border border-ink-200 bg-white px-2 text-xs font-semibold text-ink-700"
+                              className="mt-2 h-11 rounded-md border border-ink-200 bg-white px-2 text-xs font-semibold text-ink-700"
                               title="שייך את התור לעובד"
                             >
                               <option value="">ללא עובד מוגדר</option>

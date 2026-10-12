@@ -30,6 +30,6 @@ export async function GET(request: NextRequest) {
     signedIn: true,
     role: session.role,
     staff,
-    business: toOwnerBusiness(business, session.role),
+    business: toOwnerBusiness(business, session.role, session.staffId),
   });
 }

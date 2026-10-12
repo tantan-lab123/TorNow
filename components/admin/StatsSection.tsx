@@ -135,7 +135,7 @@ export const StatsSection: React.FC<StatsSectionProps> = ({
               triggerHaptic(10);
               setTimeframe("today");
             }}
-            className={`px-4 py-1.5 rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 ${
+            className={`min-h-[44px] px-4 rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 ${
               timeframe === "today"
                 ? "bg-indigo-600 text-white shadow-xs"
                 : "text-slate-600 hover:text-slate-900"
@@ -151,7 +151,7 @@ export const StatsSection: React.FC<StatsSectionProps> = ({
               triggerHaptic(10);
               setTimeframe("week");
             }}
-            className={`px-4 py-1.5 rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 ${
+            className={`min-h-[44px] px-4 rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 ${
               timeframe === "week"
                 ? "bg-indigo-600 text-white shadow-xs"
                 : "text-slate-600 hover:text-slate-900"
@@ -167,7 +167,7 @@ export const StatsSection: React.FC<StatsSectionProps> = ({
               triggerHaptic(10);
               setTimeframe("month");
             }}
-            className={`px-4 py-1.5 rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 ${
+            className={`min-h-[44px] px-4 rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 ${
               timeframe === "month"
                 ? "bg-indigo-600 text-white shadow-xs"
                 : "text-slate-600 hover:text-slate-900"

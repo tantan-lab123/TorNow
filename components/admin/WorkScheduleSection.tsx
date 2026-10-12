@@ -97,7 +97,7 @@ export const WorkScheduleSection: React.FC<WorkScheduleSectionProps> = ({
       <div className="flex bg-slate-200/80 p-1 rounded-2xl max-w-sm mx-auto">
         <button
           onClick={() => setSubTab("hours")}
-          className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+          className={`flex-1 min-h-[44px] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
             subTab === "hours" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-600 hover:text-slate-900"
           }`}
         >
@@ -107,7 +107,7 @@ export const WorkScheduleSection: React.FC<WorkScheduleSectionProps> = ({
 
         <button
           onClick={() => setSubTab("holidays")}
-          className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+          className={`flex-1 min-h-[44px] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
             subTab === "holidays" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-600 hover:text-slate-900"
           }`}
         >
@@ -299,7 +299,7 @@ export const WorkScheduleSection: React.FC<WorkScheduleSectionProps> = ({
                 >
                   <button
                     onClick={() => onDeleteOverride(ovr.id)}
-                    className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 transition-colors"
+                    className="h-11 w-11 inline-flex items-center justify-center rounded-lg text-rose-500 hover:bg-rose-50 transition-colors"
                     title="מחק חופשה זו"
                   >
                     <Trash2 className="w-4 h-4" />

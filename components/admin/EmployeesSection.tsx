@@ -166,11 +166,11 @@ export const EmployeesSection: React.FC<EmployeesSectionProps> = ({
                   type="button"
                   onClick={async () => {
                     triggerHaptic(20);
-                    if (await confirmDialog(`האם אתה בטוח שברצונך למחוק את העובד "${emp.name}"?`, { confirmLabel: "למחוק", danger: true })) {
+                    if (await confirmDialog(`האם אתה בטוח שברצונך למחוק את העובד ״${emp.name}״?`, { confirmLabel: "למחוק", danger: true })) {
                       run(() => onDeleteEmployee(emp.id));
                     }
                   }}
-                  className="p-1.5 text-ink-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+                  className="h-11 w-11 inline-flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
                   title="מחק עובד מהמערכת"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -204,7 +204,7 @@ export const EmployeesSection: React.FC<EmployeesSectionProps> = ({
                   triggerHaptic(15);
                   run(() => onUpdateEmployee(emp.id, { is_visible_online: !emp.is_visible_online }));
                 }}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl font-bold transition-colors ${
+                className={`flex items-center gap-1.5 min-h-[44px] px-3 rounded-xl font-bold transition-colors ${
                   emp.is_visible_online
                     ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
                     : "bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200"
@@ -222,7 +222,7 @@ export const EmployeesSection: React.FC<EmployeesSectionProps> = ({
                   setPwValue("");
                   setPwTarget(emp);
                 }}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-colors"
+                className="flex items-center gap-1.5 min-h-[44px] px-3 rounded-xl font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-colors"
               >
                 <KeyRound className="w-3.5 h-3.5" />
                 <span>{emp.has_login ? "שנה סיסמה" : "הגדר כניסה"}</span>
@@ -235,7 +235,7 @@ export const EmployeesSection: React.FC<EmployeesSectionProps> = ({
                       run(() => onUpdateEmployee(emp.id, { remove_login: true }));
                     }
                   }}
-                  className="px-2.5 py-1 rounded-xl font-bold text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                  className="inline-flex items-center min-h-[44px] px-3 rounded-xl font-bold text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                 >
                   הסר כניסה
                 </button>
@@ -243,7 +243,7 @@ export const EmployeesSection: React.FC<EmployeesSectionProps> = ({
 
               <button
                 onClick={() => run(() => onUpdateEmployee(emp.id, { active: !emp.active }))}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors mr-auto"
+                className="flex items-center gap-1.5 min-h-[44px] px-3 rounded-xl font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors mr-auto"
                 title="השבת / הפעל גישה"
               >
                 <Power className="w-3.5 h-3.5" />

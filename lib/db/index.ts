@@ -19,7 +19,7 @@ import { BLOCK_CLIENT_PHONE, BLOCK_NOTE_PREFIX } from "@/lib/utils";
 // Supabase returns at most this many rows per request, so longer lists are read in pages.
 const PAGE_SIZE = 1000;
 
-// In-Memory store for development / preview when Supabase is not connected
+// In-memory sample data for local development without Supabase
 declare global {
   // eslint-disable-next-line no-var
   var __SCHEDULE_DB__:
@@ -30,6 +30,30 @@ declare global {
         appointments: Appointment[];
       }
     | undefined;
+}
+
+// Production never keeps data in memory: it would vanish on the next deploy or cold start and
+// differ between server instances, while every sign-up and booking looked successful. Without
+// Supabase config there, any read or write throws instead, so the gap shows up at once.
+const memoryForbidden = !isSupabaseConfigured && process.env.NODE_ENV === "production";
+
+export class DatabaseNotConfiguredError extends Error {
+  constructor() {
+    super(
+      "No database: set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY. " +
+        "Production refuses to fall back to in-memory sample data."
+    );
+    this.name = "DatabaseNotConfiguredError";
+  }
+}
+
+function inMemory<T extends object>(store: T): T {
+  if (!memoryForbidden) return store;
+  return new Proxy(store, {
+    get() {
+      throw new DatabaseNotConfiguredError();
+    },
+  });
 }
 
 if (!globalThis.__SCHEDULE_DB__) {
@@ -44,7 +68,7 @@ if (!globalThis.__SCHEDULE_DB__) {
     : { businesses: [], services: [], clients: [], appointments: [] };
 }
 
-const db = globalThis.__SCHEDULE_DB__;
+const db = inMemory(globalThis.__SCHEDULE_DB__);
 
 // Helper to attach joined relations
 function hydrateAppointment(
@@ -80,9 +104,10 @@ export function normalizeBusinessRecord(raw: any): Business {
   const slot_interval_minutes =
     raw.slot_interval_minutes || wh._slot_interval_minutes || 15;
   const date_overrides = raw.date_overrides || wh._date_overrides || [];
+  const calendar_version = Number(raw.calendar_version ?? wh._calendar_version) || 0;
   // The _ keys only persist the fields above inside the jsonb column; callers get them
   // as real fields, so they never ship twice (or unfiltered) in API responses.
-  const { _settings, _slot_interval_minutes, _date_overrides, ...days } = wh;
+  const { _settings, _slot_interval_minutes, _date_overrides, _calendar_version, ...days } = wh;
 
   return {
     ...raw,
@@ -90,6 +115,7 @@ export function normalizeBusinessRecord(raw: any): Business {
     settings,
     slot_interval_minutes,
     date_overrides,
+    calendar_version,
   };
 }
 
@@ -220,6 +246,10 @@ export async function updateBusiness(
       updates.date_overrides !== undefined
         ? updates.date_overrides
         : (currentWh._date_overrides || existing?.date_overrides),
+    _calendar_version:
+      updates.calendar_version !== undefined
+        ? updates.calendar_version
+        : (currentWh._calendar_version || existing?.calendar_version || undefined),
   };
 
   const payload: Record<string, any> = {
@@ -933,7 +963,7 @@ export interface CustomerProfile {
   phone: string;
 }
 
-const mockProfiles = new Map<string, CustomerProfile>();
+const mockProfiles = inMemory(new Map<string, CustomerProfile>());
 
 export async function getCustomerProfile(googleId: string): Promise<CustomerProfile | null> {
   if (isSupabaseConfigured && supabaseAdmin) {
@@ -976,7 +1006,7 @@ export interface StaffMember {
   created_at?: string;
 }
 
-const mockStaff: StaffMember[] = [];
+const mockStaff = inMemory<StaffMember[]>([]);
 
 export async function getStaffByBusiness(businessId: string): Promise<StaffMember[]> {
   if (isSupabaseConfigured && supabaseAdmin) {
@@ -1134,7 +1164,7 @@ export interface WaitlistEntry {
   service?: { name: string } | null;
 }
 
-const mockWaitlist: WaitlistEntry[] = [];
+const mockWaitlist = inMemory<WaitlistEntry[]>([]);
 
 export async function addWaitlistEntry(input: {
   business_id: string;
@@ -1259,8 +1289,8 @@ export interface PushSub {
   auth: string;
 }
 
-const mockPush = new Map<string, PushSub>();
-const mockSecrets = new Map<string, string>();
+const mockPush = inMemory(new Map<string, PushSub>());
+const mockSecrets = inMemory(new Map<string, string>());
 
 export async function savePushSubscription(sub: PushSub): Promise<void> {
   if (isSupabaseConfigured && supabaseAdmin) {

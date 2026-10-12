@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
           success: true,
           role: staff.role,
           staff: { id: staff.id, name: staff.name },
-          business: toOwnerBusiness(staffBusiness, staff.role),
+          business: toOwnerBusiness(staffBusiness, staff.role, staff.id),
         });
         setSessionCookie(res, staffBusiness.id, staff.role, staff.id, staff.password);
         return res;
