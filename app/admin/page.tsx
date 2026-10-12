@@ -162,7 +162,7 @@ export default function AdminDashboardPage() {
   const isInitialLoadRef = React.useRef(true);
 
   // Active TopBar Tab (11 core areas)
-  const [activeTab, setActiveTab] = useState<AdminTab>("calendar");
+  const [requestedTab, setActiveTab] = useState<AdminTab>("calendar");
   const [selectedStaffId, setSelectedStaffId] = useState<string>("all");
 
   // SaaS domain collections - start empty for new businesses!
@@ -187,7 +187,8 @@ export default function AdminDashboardPage() {
   // Unique CRM Clients computed from appointments + custom created clients
   const clients = useMemo(() => {
     const map = new Map<string, Client>();
-    savedClients.forEach((c) => map.set(c.id, c));
+    // (nothing is shown from a previous account once nobody is signed in)
+    if (selectedBusiness) savedClients.forEach((c) => map.set(c.id, c));
     appointments.forEach((app) => {
       // blocked time hangs on a placeholder client, not a customer
       if (isBlockedTime(app)) return;
@@ -219,8 +220,12 @@ export default function AdminDashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (selectedBusiness) loadSavedClients();
-    else setSavedClients([]);
+    if (!selectedBusiness) return;
+    // (inside an async function: the state is set once the answer arrives, not during the effect)
+    const run = async () => {
+      await loadSavedClients();
+    };
+    void run();
   }, [selectedBusiness?.id, loadSavedClients]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [selectedDate, setSelectedDate] = useState<Date>(startOfToday());
@@ -250,6 +255,7 @@ export default function AdminDashboardPage() {
   // In-app navigation (a <Link> click) renders this page before the address bar updates, so the
   // initializer above can still see the old URL. Re-check once the page is mounted.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reads the address bar, which only exists in the browser
     if (new URLSearchParams(window.location.search).get("new") === "1") setAuthTab("register");
   }, []);
   const [loginPhone, setLoginPhone] = useState("");
@@ -730,20 +736,22 @@ export default function AdminDashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (selectedBusiness) loadEmployees();
-    else setEmployees([]);
+    if (!selectedBusiness) return;
+    const run = async () => {
+      await loadEmployees();
+    };
+    void run();
   }, [selectedBusiness?.id, loadEmployees]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // A role may not sit on a tab it cannot use (e.g. after switching accounts)
-  useEffect(() => {
-    const allowed =
-      role === "staff"
-        ? ["calendar", "customers"]
-        : role === "manager"
-        ? ["calendar", "stats", "customers", "services", "workschedule", "marketing", "cashregister", "settings"]
-        : null;
-    if ((allowed && !allowed.includes(activeTab)) || HIDDEN_TABS.includes(activeTab)) setActiveTab("calendar");
-  }, [role, activeTab]);
+  // A role may not sit on a tab it cannot use (e.g. after switching accounts): it gets the calendar
+  const allowedTabs: string[] | null =
+    role === "staff"
+      ? ["calendar", "customers"]
+      : role === "manager"
+      ? ["calendar", "stats", "customers", "services", "workschedule", "marketing", "cashregister", "settings"]
+      : null;
+  const activeTab: AdminTab =
+    (allowedTabs && !allowedTabs.includes(requestedTab)) || HIDDEN_TABS.includes(requestedTab) ? "calendar" : requestedTab;
 
   // Appointments for the selected day
   const dailyAppointments = useMemo(() => {
@@ -890,7 +898,7 @@ export default function AdminDashboardPage() {
           const dStr = format(d, "yyyy-MM-dd");
           updatedOverrides = updatedOverrides.filter((o) => o.date !== dStr);
           updatedOverrides.push({
-            id: "ov-" + Math.random().toString(36).substring(2, 7),
+            id: "ov-" + crypto.randomUUID().slice(0, 8),
             date: dStr,
             is_closed: true,
             reason: rangeReason.trim() || "חופשה / שבוע סגור",
@@ -945,7 +953,7 @@ export default function AdminDashboardPage() {
         const dStr = format(targetD, "yyyy-MM-dd");
         updatedOverrides = updatedOverrides.filter((o) => o.date !== dStr);
         updatedOverrides.push({
-          id: "ov-" + Math.random().toString(36).substring(2, 7),
+          id: "ov-" + crypto.randomUUID().slice(0, 8),
           date: dStr,
           is_closed: true,
           reason: daysCount > 1 ? "שבוע סגור / חופשה" : "חופש / סידורים אישיים",

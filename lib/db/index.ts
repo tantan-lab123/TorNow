@@ -21,7 +21,6 @@ const PAGE_SIZE = 1000;
 
 // In-memory sample data for local development without Supabase
 declare global {
-  // eslint-disable-next-line no-var
   var __SCHEDULE_DB__:
     | {
         businesses: Business[];

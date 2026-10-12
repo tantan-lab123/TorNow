@@ -195,14 +195,15 @@ export function verifyGoogleAccessToken(accessToken: unknown) {
 // -------------------------------------------------------------- sanitizers
 /** Fields safe to show to anyone (public booking page). */
 export function toPublicBusiness(b: Business): Business {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { password, pin, google_id, owner_email, calendar_token, calendar_version, ...rest } = b;
-  return { ...rest, settings: dropLegacyPrefills(rest.settings) } as Business;
+  // the share-picture is a large inline image that only /api/og needs: keep it out of the public JSON
+  const publicSettings = dropLegacyPrefills(rest.settings);
+  if (publicSettings) delete publicSettings.og_image_url;
+  return { ...rest, settings: publicSettings } as Business;
 }
 
 /** Fields for the logged-in owner: never the password hash / pin / google id. */
 export function toOwnerBusiness(b: Business, role: Role = "owner", staffId?: string): Business {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { password, pin, google_id, calendar_version, ...rest } = b;
   const clean = { ...rest, settings: dropLegacyPrefills(rest.settings) };
   // the calendar-feed secret is only for the owner and managers, each manager with their own

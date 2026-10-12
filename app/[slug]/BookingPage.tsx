@@ -199,8 +199,9 @@ export default function BookingPage() {
     loadData();
   }, [slug]);
 
-  // Load saved client info from localStorage
+  // Load saved client info from localStorage (browser-only, so it runs after mount)
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
@@ -214,6 +215,7 @@ export default function BookingPage() {
     } catch {
       // ignore
     }
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   // Each step is its own page: always start it from the top
@@ -277,7 +279,6 @@ export default function BookingPage() {
       cancelled = true;
       sub.subscription.unsubscribe();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleJoinWaitlist = async (e: React.FormEvent) => {

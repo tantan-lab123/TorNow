@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Heebo } from "next/font/google";
 import localFont from "next/font/local";
+import { connection } from "next/server";
 import "./globals.css";
 import { DialogHost } from "@/components/ui/DialogHost";
 
@@ -41,11 +42,13 @@ export const viewport: Viewport = {
   themeColor: "#1E4D36",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Every page is rendered per request so the Content-Security-Policy nonce (proxy.ts) can be applied
+  await connection();
   return (
     <html lang="he" dir="rtl" className={`${plinko.variable} ${heebo.variable}`}>
       <body className="font-sans antialiased bg-paper text-ink-900">

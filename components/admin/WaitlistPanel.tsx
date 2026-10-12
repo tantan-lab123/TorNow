@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { BellRing, Check, MessageCircle, X } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { formatDayString, formatHebrewDate, formatTime, toInternationalPhone, triggerHaptic } from "@/lib/utils";
@@ -20,20 +20,24 @@ interface WaitEntry {
 export const WaitlistPanel: React.FC<{ businessName: string }> = ({ businessName }) => {
   const [entries, setEntries] = useState<WaitEntry[]>([]);
 
-  const load = useCallback(async () => {
-    try {
-      const res = await fetch("/api/waitlist");
-      if (res.ok) setEntries(await res.json());
-    } catch {
-      // ignore transient errors
-    }
-  }, []);
-
   useEffect(() => {
-    load();
+    let alive = true;
+    const load = async () => {
+      try {
+        const res = await fetch("/api/waitlist");
+        const data = res.ok ? await res.json() : null;
+        if (alive && data) setEntries(data);
+      } catch {
+        // ignore transient errors
+      }
+    };
+    void load();
     const t = setInterval(load, 30_000);
-    return () => clearInterval(t);
-  }, [load]);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, []);
 
   const resolve = async (id: string, status: "done" | "cancelled") => {
     triggerHaptic(15);
