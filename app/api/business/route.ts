@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
   // Logged-in users of this business get their full view (calendar token only for owner/manager).
   const session = await getValidSession(request);
   if (session?.businessId === business.id) {
-    return NextResponse.json(toOwnerBusiness(business, session.role));
+    return NextResponse.json(toOwnerBusiness(business, session.role, session.staffId));
   }
   return NextResponse.json(toPublicBusiness(business));
 }
@@ -70,6 +70,7 @@ export async function PATCH(request: NextRequest) {
       slot_interval_minutes,
       date_overrides,
       settings,
+      rotate_calendar_link,
     } = body;
 
     // Only their own business may be modified.
@@ -78,6 +79,9 @@ export async function PATCH(request: NextRequest) {
     const isOwner = auth.session.role === "owner";
     if (!isOwner && password !== undefined) {
       return forbidden("רק בעל העסק יכול לשנות את סיסמת החשבון");
+    }
+    if (!isOwner && rotate_calendar_link !== undefined) {
+      return forbidden("רק בעל העסק יכול להחליף את קישור היומן");
     }
     const businessId = sessionId;
 
@@ -119,7 +123,11 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "חריגות תאריך לא תקינות" }, { status: 400 });
     }
 
+    // A new calendar link: every feed URL handed out so far, the owner's and the managers', stops working.
+    const current = rotate_calendar_link === true ? await getBusinessById(businessId) : null;
+
     const updated = await updateBusiness(businessId, {
+      ...(current ? { calendar_version: (current.calendar_version || 0) + 1 } : {}),
       ...(name ? { name: name.trim() } : {}),
       ...(isOwner && owner_phone ? { owner_phone } : {}),
       ...(isOwner && owner_email ? { owner_email: String(owner_email).trim().slice(0, 254) } : {}),
@@ -135,7 +143,7 @@ export async function PATCH(request: NextRequest) {
     if (!updated) {
       return NextResponse.json({ error: "עסק לא נמצא" }, { status: 404 });
     }
-    const res = NextResponse.json(toOwnerBusiness(updated, auth.session.role));
+    const res = NextResponse.json(toOwnerBusiness(updated, auth.session.role, auth.session.staffId));
     if (password) {
       // every other device is signed out; this one gets a session for the new password
       forgetCredentialCache(businessId);

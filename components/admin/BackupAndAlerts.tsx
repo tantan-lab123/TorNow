@@ -132,21 +132,21 @@ export const BackupAndAlerts: React.FC = () => {
           <a
             href="/api/export?format=json"
             download
-            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700"
+            className="inline-flex items-center gap-1.5 h-11 px-4 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700"
           >
             <Download className="w-4 h-4" /> גיבוי מלא (JSON)
           </a>
           <a
             href="/api/export?format=appointments"
             download
-            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl bg-slate-100 text-slate-800 text-xs font-bold hover:bg-slate-200 border border-slate-200"
+            className="inline-flex items-center gap-1.5 h-11 px-4 rounded-xl bg-slate-100 text-slate-800 text-xs font-bold hover:bg-slate-200 border border-slate-200"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> תורים (Excel)
           </a>
           <a
             href="/api/export?format=clients"
             download
-            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl bg-slate-100 text-slate-800 text-xs font-bold hover:bg-slate-200 border border-slate-200"
+            className="inline-flex items-center gap-1.5 h-11 px-4 rounded-xl bg-slate-100 text-slate-800 text-xs font-bold hover:bg-slate-200 border border-slate-200"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> לקוחות (Excel)
           </a>

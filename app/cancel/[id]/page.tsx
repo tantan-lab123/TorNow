@@ -166,16 +166,16 @@ export default function CancelAppointmentPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center">
+      <main className="flex flex-col items-center justify-center min-h-screen p-6 text-center">
         <div className="w-10 h-10 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4" />
         <p className="text-sm text-slate-500">טוען פרטי תור לביטול...</p>
-      </div>
+      </main>
     );
   }
 
   if (error || !appointment) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+      <main className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <Card className="max-w-md w-full p-6 text-center space-y-4">
           <div className="w-14 h-14 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto">
             <AlertTriangle className="w-7 h-7" />
@@ -186,12 +186,12 @@ export default function CancelAppointmentPage() {
             חזרה לדף הראשי
           </Button>
         </Card>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 flex flex-col items-center justify-center">
+    <main className="min-h-screen bg-slate-50 p-4 flex flex-col items-center justify-center">
       <div className="max-w-md w-full space-y-5">
         {/* Business Branding */}
         <div className="text-center">
@@ -457,6 +457,6 @@ export default function CancelAppointmentPage() {
           </Card>
         )}
       </div>
-    </div>
+    </main>
   );
 }

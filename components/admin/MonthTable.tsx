@@ -78,7 +78,7 @@ export function MonthTable({
   }, [days, getOverride]);
 
   const navButton =
-    "m-press grid h-9 w-9 place-items-center rounded-md border border-ink-200 bg-white text-ink-700 hover:bg-paper";
+    "m-press grid h-11 w-11 place-items-center rounded-md border border-ink-200 bg-white text-ink-700 hover:bg-paper";
 
   return (
     <div className="overflow-hidden rounded-xl border border-ink-200 bg-white">
@@ -96,7 +96,7 @@ export function MonthTable({
             <button
               type="button"
               onClick={() => onMonthChange(startOfMonth(today))}
-              className="m-press h-9 rounded-md border border-ink-200 bg-white px-3 text-[13px] font-bold text-ink-800 hover:bg-paper"
+              className="m-press h-11 rounded-md border border-ink-200 bg-white px-3 text-[13px] font-bold text-ink-800 hover:bg-paper"
             >
               היום
             </button>

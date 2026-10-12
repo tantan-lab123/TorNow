@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getBusinessBySlug, getAppointments } from "@/lib/db";
+import { getBusinessBySlug, getAppointments, getStaffByBusiness } from "@/lib/db";
 import { verifyCalendarToken } from "@/lib/auth";
 import { clientIp, rateLimit, tooMany } from "@/lib/rateLimit";
 import { Appointment } from "@/lib/types";
@@ -20,8 +20,18 @@ function escapeIcsText(text: string): string {
     .replace(/[\r\x00-\x08\x0b-\x1f]/g, "");
 }
 
-// Private subscription feed: requires the owner's secret ?t= token
+// Private subscription feed: requires the owner's secret ?t= token, or a manager's own one
 // (shown only inside the logged-in admin). Contains client names and phones.
+async function feedTokenValid(businessId: string, version: number | undefined, token: string | null) {
+  if (!token) return false;
+  if (verifyCalendarToken(token, businessId, version)) return true;
+  // A manager's link works only while they are an active manager of this business.
+  const staff = await getStaffByBusiness(businessId);
+  return staff.some(
+    (s) => s.active && s.role === "manager" && verifyCalendarToken(token, businessId, version, s.id)
+  );
+}
+
 export async function GET(request: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   try {
     if (!rateLimit(`ics:${clientIp(request)}`, 60, 10 * 60 * 1000)) return tooMany();
@@ -30,7 +40,10 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ slug: s
     const business = await getBusinessBySlug(slug);
 
     // Same response for "no such business" and "bad token": no slug enumeration.
-    if (!business || !verifyCalendarToken(business.id, request.nextUrl.searchParams.get("t"))) {
+    if (
+      !business ||
+      !(await feedTokenValid(business.id, business.calendar_version, request.nextUrl.searchParams.get("t")))
+    ) {
       return new NextResponse("Not found", { status: 404 });
     }
 

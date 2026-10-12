@@ -132,11 +132,11 @@ export const ProductsSection: React.FC<ProductsSectionProps> = ({
                         type="button"
                         onClick={async () => {
                           triggerHaptic(20);
-                          if (await confirmDialog(`האם אתה בטוח שברצונך למחוק את המוצר "${product.name}"?`, { confirmLabel: "למחוק", danger: true })) {
+                          if (await confirmDialog(`האם אתה בטוח שברצונך למחוק את המוצר ״${product.name}״?`, { confirmLabel: "למחוק", danger: true })) {
                             onDeleteProduct(product.id);
                           }
                         }}
-                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+                        className="h-11 w-11 inline-flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
                         title="מחק מוצר מהמלאי"
                       >
                         <Trash2 className="w-4 h-4" />
