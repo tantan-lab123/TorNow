@@ -20,16 +20,9 @@ import { isPasswordPwned, PWNED_ERROR } from "@/lib/pwned";
 import { clientIp, rateLimit, tooMany } from "@/lib/rateLimit";
 import { forgetCredentialCache, getValidSession, requireRole, MANAGEMENT, OWNER_ONLY } from "@/lib/access";
 import { sanitizeDateOverrides, sanitizeSettings, sanitizeWorkingHours } from "@/lib/validation";
+import { randomBusinessSlug } from "@/lib/slug";
 
 export const dynamic = "force-dynamic";
-
-// Addresses that already belong to the site (/admin, /api/..., /cancel/...): a business with one
-// of these would register fine and then have a booking link that never opens.
-const RESERVED_SLUGS = new Set([
-  "admin", "api", "cancel", "login", "logout", "register", "signup", "reset", "forgot",
-  "manifest", "sitemap", "robots", "favicon", "icon", "apple", "static", "next", "public",
-  "app", "www", "torli", "tornow", "support", "help", "terms", "privacy", "about", "contact",
-]);
 
 const PASSWORD_ERROR =
   "הסיסמה חייבת להכיל לפחות 8 תווים, אות גדולה, אות קטנה, ספרה ותו מיוחד (!@#$%^&* וכו')";
@@ -169,7 +162,7 @@ export async function POST(request: NextRequest) {
     if (!rateLimit(`register:${clientIp(request)}`, 5, 60 * 60 * 1000)) return tooMany();
 
     const body = await request.json();
-    const { name, slug, owner_phone, owner_email, password, access_token, category, slot_interval_minutes } =
+    const { name, owner_phone, owner_email, password, access_token, category, slot_interval_minutes } =
       body;
 
     if (typeof name !== "string" || !name.trim() || name.length > 120 || !owner_phone) {
@@ -206,39 +199,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "מספר הטלפון כבר רשום במערכת" }, { status: 409 });
     }
 
-    let finalSlug =
-      typeof slug === "string" ? slug.trim().toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 40) : "";
-    // A chosen address must be usable: not a one-letter link, and not a word the site itself uses
-    if (finalSlug && (finalSlug.length < 3 || RESERVED_SLUGS.has(finalSlug))) {
-      return NextResponse.json(
-        { error: "כתובת הקישור צריכה להיות באורך של 3 תווים לפחות (אותיות באנגלית ומספרים), ולא מילה שמורה. אנא בחרו אחרת." },
-        { status: 400 }
-      );
-    }
-    if (!finalSlug) finalSlug = generateRandomSlug(6);
-
-    let existing = await getBusinessBySlug(finalSlug);
-    if (existing && !slug) {
-      finalSlug = generateRandomSlug(6);
-      existing = await getBusinessBySlug(finalSlug);
-    }
-    if (existing) {
-      return NextResponse.json(
-        { error: "מזהה קישור (Slug) זה כבר תפוס במערכת. אנא בחר סיומת אחרת." },
-        { status: 409 }
-      );
-    }
-
-    const newBusiness = await createBusiness({
+    // The booking address is always picked by the server: random, never repeated, nothing for the
+    // owner to understand or get wrong. (A rare clash with a concurrent sign-up just draws again.)
+    let newBusiness: Awaited<ReturnType<typeof createBusiness>> | null = null;
+    for (let attempt = 0; attempt < 6 && !newBusiness; attempt++) {
+      const candidate = randomBusinessSlug();
+      if (await getBusinessBySlug(candidate)) continue;
+      try {
+        newBusiness = await createBusiness({
       name,
-      slug: finalSlug,
+      slug: candidate,
       owner_phone: phoneDigits,
       owner_email: googleIdentity ? googleIdentity.email : owner_email,
       password: googleIdentity ? undefined : password,
       google_id: googleIdentity?.id,
       category,
       slot_interval_minutes: slot_interval_minutes ? Number(slot_interval_minutes) : undefined,
-    });
+        });
+      } catch (err) {
+        if ((err as { code?: string })?.code !== "23505") throw err; // unique violation: draw again
+      }
+    }
+    if (!newBusiness) {
+      return NextResponse.json({ error: "שגיאה ביצירת העסק. אנא נסו שוב." }, { status: 500 });
+    }
 
     const res = NextResponse.json({ success: true, business: toOwnerBusiness(newBusiness) });
     setSessionCookie(res, newBusiness.id, "owner", undefined, newBusiness.password);

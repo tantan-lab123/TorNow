@@ -21,7 +21,6 @@ import {
   KeyRound,
   Check,
   History,
-  Dices,
   Volume2,
   VolumeX,
   Bell,
@@ -59,7 +58,6 @@ import {
   validatePhoneNumber,
   formatJewishDate,
   getJewishHolidayOrShabbat,
-  generateRandomSlug,
   isBlockedTime,
 } from "@/lib/utils";
 import { supabase } from "@/lib/db/supabase";
@@ -271,7 +269,6 @@ export default function AdminDashboardPage() {
 
   // New Business Registration Form
   const [regName, setRegName] = useState("");
-  const [regSlug, setRegSlug] = useState(() => generateRandomSlug(6));
   const [regEmail, setRegEmail] = useState("");
   const [regPhone, setRegPhone] = useState("");
   const [regPassword, setRegPassword] = useState("");
@@ -399,7 +396,6 @@ export default function AdminDashboardPage() {
               if (gUser.name) {
                 setRegName((prev) => prev || `עסק ${gUser.name}`);
               }
-              setRegSlug((prev) => prev || generateRandomSlug(6));
               setLoginError("");
             }
           } catch (e) {
@@ -558,9 +554,6 @@ export default function AdminDashboardPage() {
   // Business name change in registration form
   const handleRegNameChange = (name: string) => {
     setRegName(name);
-    if (!regSlug) {
-      setRegSlug(generateRandomSlug(6));
-    }
   };
 
   // Handle New Business Registration
@@ -568,7 +561,7 @@ export default function AdminDashboardPage() {
     e.preventDefault();
     setRegError("");
 
-    if (!regName.trim() || !regSlug.trim() || !regPhone.trim()) {
+    if (!regName.trim() || !regPhone.trim()) {
       setRegError("יש למלא את כל שדות החובה המסומנים בכוכבית (*)");
       return;
     }
@@ -598,7 +591,6 @@ export default function AdminDashboardPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: regName.trim(),
-          slug: regSlug.trim(),
           owner_phone: regPhone.trim(),
           owner_email: (googleUser ? googleUser.email : regEmail.trim()) || undefined,
           password: googleUser ? undefined : regPassword.trim(),
@@ -1445,45 +1437,9 @@ export default function AdminDashboardPage() {
                   required
                 />
 
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-sm font-semibold text-slate-700">
-                      סיומת קישור אישית (6 אותיות רנדומליות) *
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        triggerHaptic(15);
-                        setRegSlug(generateRandomSlug(6));
-                      }}
-                      className="text-xs text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1 transition-colors"
-                    >
-                      <Dices className="w-3.5 h-3.5" />
-                      <span>הגרל סלאג חדש</span>
-                    </button>
-                  </div>
-                  <div className="flex items-center rounded-2xl border border-slate-200 bg-white px-3 h-12 ltr focus-within:border-indigo-600 focus-within:ring-4 focus-within:ring-indigo-500/15 transition-all">
-                    <span className="text-xs text-ink-500 font-mono">{typeof window !== "undefined" ? window.location.host : ""}/</span>
-                    <input
-                      type="text"
-                      value={regSlug}
-                      onChange={(e) =>
-                        setRegSlug(
-                          e.target.value
-                            .toLowerCase()
-                            .replace(/[^a-z0-9]/g, "")
-                            .slice(0, 12)
-                        )
-                      }
-                      placeholder="kx9m2p"
-                      className="w-full bg-transparent border-none text-sm font-bold text-indigo-600 focus:outline-none pl-1"
-                      required
-                    />
-                  </div>
-                  <p className="text-[11px] text-ink-500 mt-1 text-right">
-                    כתובת מקוצרת וקלה לשיתוף (למשל {typeof window !== "undefined" ? window.location.host : ""}/{regSlug || "kx9m2p"})
-                  </p>
-                </div>
+                <p className="text-[12px] text-ink-500 -mt-1 text-right">
+                  הקישור האישי של העסק ללקוחות נוצר אוטומטית, ותמצאו אותו בהגדרות, עם אפשרות להעתיק ולשתף.
+                </p>
 
                 <div className="grid grid-cols-2 gap-3">
                   <Input
