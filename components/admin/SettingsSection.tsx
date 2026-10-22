@@ -116,6 +116,8 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
 }) => {
   const [subTab, setSubTab] = useState<"general" | "controls" | "qrcode" | "sync">("general");
   const [copiedSyncUrl, setCopiedSyncUrl] = useState(false);
+  const [reminderSaving, setReminderSaving] = useState(false);
+  const [reminderSaved, setReminderSaved] = useState(false);
   const [rotatingLink, setRotatingLink] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -936,6 +938,23 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
             }
           };
 
+          const reminderValue = business.settings?.calendar_reminder_minutes ?? 60;
+          const handleReminderChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+            setReminderSaving(true);
+            setReminderSaved(false);
+            try {
+              await onUpdateSettings({
+                settings: { ...business.settings, calendar_reminder_minutes: Number(e.target.value) },
+              });
+              setReminderSaved(true);
+              setTimeout(() => setReminderSaved(false), 2500);
+            } catch (err) {
+              await alertDialog(err instanceof Error ? err.message : "לא הצלחנו לשמור. נסו שוב.");
+            } finally {
+              setReminderSaving(false);
+            }
+          };
+
           const handleCopySync = async () => {
             triggerHaptic(20);
             try {
@@ -1006,6 +1025,39 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
                 </div>
                 <p className="text-[11px] text-ink-500">
                   פורמט סטנדרטי בינלאומי התומך ב-Google Calendar, Apple iCal, Microsoft Outlook.
+                </p>
+              </div>
+
+              {/* Alert before every appointment */}
+              <div className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+                <label htmlFor="calendar-reminder" className="block text-sm font-extrabold text-slate-900">
+                  התראה ביומן לפני כל תור
+                </label>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  היומן שלך ישלח לך התראה לפני שהתור מתחיל, עם סוג הטיפול ושם הלקוח.
+                </p>
+                <div className="flex items-center gap-3">
+                  <select
+                    id="calendar-reminder"
+                    value={reminderValue}
+                    onChange={handleReminderChange}
+                    disabled={reminderSaving}
+                    className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800"
+                  >
+                    <option value={0}>ללא התראה</option>
+                    <option value={10}>10 דקות לפני</option>
+                    <option value={15}>רבע שעה לפני</option>
+                    <option value={30}>חצי שעה לפני</option>
+                    <option value={60}>שעה לפני</option>
+                    <option value={120}>שעתיים לפני</option>
+                    <option value={180}>3 שעות לפני</option>
+                    <option value={1440}>יום לפני</option>
+                  </select>
+                  {reminderSaved && <span className="text-xs font-bold text-emerald-700">נשמר</span>}
+                </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  ביומן של האייפון ובשאר היומנים ההתראה מגיעה אוטומטית. ביומן של גוגל, צריך להגדיר פעם אחת:
+                  בהגדרות של היומן הזה, תחת &quot;התראות לאירועים&quot;, ללחוץ &quot;הוסף התראה&quot; ולבחור את אותו זמן.
                 </p>
               </div>
 

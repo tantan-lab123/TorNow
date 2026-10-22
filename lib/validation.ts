@@ -41,6 +41,10 @@ const num = (v: unknown, min: number, max: number) => {
 };
 const bool = (v: unknown) => (typeof v === "boolean" ? v : undefined);
 
+/** Minutes before an appointment: 0 = no alert. Shared by the settings screen and the calendar feed. */
+export const CALENDAR_REMINDER_CHOICES = [0, 10, 15, 30, 60, 120, 180, 1440];
+export const DEFAULT_CALENDAR_REMINDER_MINUTES = 60;
+
 export function sanitizeSettings(raw: unknown): BusinessSettings {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const out: BusinessSettings = {
@@ -61,6 +65,9 @@ export function sanitizeSettings(raw: unknown): BusinessSettings {
     show_price_and_duration: bool(r.show_price_and_duration),
     require_staff_selection: bool(r.require_staff_selection),
     waiting_list_enabled: bool(r.waiting_list_enabled),
+    calendar_reminder_minutes: CALENDAR_REMINDER_CHOICES.includes(Number(r.calendar_reminder_minutes))
+      ? Number(r.calendar_reminder_minutes)
+      : undefined,
     show_hebrew_dates: bool(r.show_hebrew_dates),
     post_booking_message: str(r.post_booking_message, 1000),
     bit_payment_url: safeHttpUrl(r.bit_payment_url),

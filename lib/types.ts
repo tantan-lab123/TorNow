@@ -71,6 +71,7 @@ export interface BusinessSettings {
   show_price_and_duration?: boolean; // default: true
   require_staff_selection?: boolean; // default: false
   waiting_list_enabled?: boolean; // default: true
+  calendar_reminder_minutes?: number; // alert in the owner's calendar before each appointment; 0 = none, default 60
   post_booking_message?: string; // custom instructions on completion
   show_hebrew_dates?: boolean; // toggle Hebrew calendar dates & Jewish holidays in client & admin views
   bit_payment_url?: string; // Bit payment link

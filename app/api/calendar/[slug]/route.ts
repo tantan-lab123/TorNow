@@ -1,3 +1,4 @@
+import { DEFAULT_CALENDAR_REMINDER_MINUTES } from "@/lib/validation";
 import { NextRequest, NextResponse } from "next/server";
 import { getBusinessBySlug, getAppointments, getStaffByBusiness } from "@/lib/db";
 import { verifyCalendarToken } from "@/lib/auth";
@@ -18,6 +19,15 @@ function escapeIcsText(text: string): string {
     .replace(/,/g, "\\,")
     .replace(/\r?\n/g, "\\n")
     .replace(/[\r\x00-\x08\x0b-\x1f]/g, "");
+}
+
+/** "בעוד שעה" / "בעוד 30 דקות" ... the lead time as it reads in the alert. */
+function reminderLead(minutes: number): string {
+  if (minutes < 60) return `בעוד ${minutes} דקות`;
+  if (minutes === 60) return "בעוד שעה";
+  if (minutes === 120) return "בעוד שעתיים";
+  if (minutes < 1440) return `בעוד ${minutes / 60} שעות`;
+  return "מחר";
 }
 
 // Private subscription feed: requires the owner's secret ?t= token, or a manager's own one
@@ -52,6 +62,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ slug: s
     const appointments = await getAppointments(business.id, since);
     const confirmedApps = appointments.filter((a: Appointment) => a.status === "confirmed");
     const nowIcs = toIcsDate(new Date().toISOString());
+    const reminderMinutes = business.settings?.calendar_reminder_minutes ?? DEFAULT_CALENDAR_REMINDER_MINUTES;
 
     const icsContent = [
       "BEGIN:VCALENDAR",
@@ -90,9 +101,20 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ slug: s
         `SUMMARY:${escapeIcsText(`${serviceName} - ${clientName}`)}`,
         `DESCRIPTION:${description}`,
         `LOCATION:${escapeIcsText(business.name)}`,
-        "STATUS:CONFIRMED",
-        "END:VEVENT"
+        "STATUS:CONFIRMED"
       );
+
+      // The calendar app pops this up `reminderMinutes` before the appointment starts
+      if (reminderMinutes > 0) {
+        icsContent.push(
+          "BEGIN:VALARM",
+          "ACTION:DISPLAY",
+          `DESCRIPTION:${escapeIcsText(`${reminderLead(reminderMinutes)}: ${serviceName} · ${clientName}`)}`,
+          `TRIGGER:-PT${reminderMinutes}M`,
+          "END:VALARM"
+        );
+      }
+      icsContent.push("END:VEVENT");
     }
 
     icsContent.push("END:VCALENDAR");
