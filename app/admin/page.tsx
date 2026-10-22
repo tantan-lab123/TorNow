@@ -81,6 +81,8 @@ import { CustomersSection } from "@/components/admin/CustomersSection";
 import { StatsSection } from "@/components/admin/StatsSection";
 import { EmployeesSection, TeamMember } from "@/components/admin/EmployeesSection";
 import { WaitlistPanel } from "@/components/admin/WaitlistPanel";
+import { GoogleSyncBanner } from "@/components/admin/GoogleSyncBanner";
+import { clearConnectingFlag, finishGoogleCalendarConnect, isConnectingCalendar } from "@/lib/google-calendar-client";
 import { MonthTable } from "@/components/admin/MonthTable";
 import { ProductsSection } from "@/components/admin/ProductsSection";
 import { MarketingSection } from "@/components/admin/MarketingSection";
@@ -352,6 +354,8 @@ export default function AdminDashboardPage() {
         if (sessionStorage.getItem("tornow_user_logged_out") === "true") {
           return;
         }
+        // Connecting Google Calendar uses its own Google session: never treat it as a login
+        if (isConnectingCalendar()) return;
 
         if (
           (event === "SIGNED_IN" || event === "INITIAL_SESSION") &&
@@ -716,6 +720,43 @@ export default function AdminDashboardPage() {
       document.removeEventListener("visibilitychange", poll);
     };
   }, [selectedBusiness, fetchAppointments]);
+
+  // Back from Google after granting calendar access: hand the one-time token to the server
+  const gcalFinishing = React.useRef(false);
+  useEffect(() => {
+    if (!selectedBusiness || role !== "owner" || gcalFinishing.current) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("gcal") !== "connect") return;
+    if (!isConnectingCalendar()) {
+      window.history.replaceState(null, "", "/admin");
+      return;
+    }
+    gcalFinishing.current = true;
+    window.history.replaceState(null, "", "/admin");
+    (async () => {
+      const result = await finishGoogleCalendarConnect();
+      setActiveTab("settings");
+      if (!result.ok) {
+        await alertDialog(result.error);
+        return;
+      }
+      const syncNow = await confirmDialog(
+        "היומן חובר. לסנכרן עכשיו גם את התורים העתידיים שכבר קיימים?",
+        { title: "יומן Google חובר", confirmLabel: "כן, לסנכרן", cancelLabel: "לא עכשיו" }
+      );
+      if (!syncNow) return;
+      try {
+        const res = await fetch("/api/google-calendar/backfill", { method: "POST" });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error("failed");
+        await alertDialog(
+          data.queued > 0 ? `סונכרנו ${data.queued} תורים עתידיים ליומן Google.` : "אין תורים עתידיים שצריך לסנכרן."
+        );
+      } catch {
+        await alertDialog("לא הצלחנו לסנכרן את התורים הקיימים. אפשר לנסות שוב מהגדרות היומן.");
+      }
+    })().finally(() => clearConnectingFlag());
+  }, [selectedBusiness, role]);
 
   // Team members come from the server (per business, with roles)
   const loadEmployees = useCallback(async () => {
@@ -2086,6 +2127,8 @@ export default function AdminDashboardPage() {
                   </button>
                 </div>
               </div>
+
+              {role !== "staff" && <GoogleSyncBanner role={role} />}
 
               <WaitlistPanel businessName={selectedBusiness.name} />
 
