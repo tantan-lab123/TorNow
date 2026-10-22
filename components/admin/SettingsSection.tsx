@@ -116,6 +116,12 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
 }) => {
   const [subTab, setSubTab] = useState<"general" | "controls" | "qrcode" | "sync">("general");
   const [copiedSyncUrl, setCopiedSyncUrl] = useState(false);
+  // iPhone / iPad: offer Apple's calendar next to Google's (detected after mount to avoid a hydration mismatch)
+  const [isApple, setIsApple] = useState(false);
+  useEffect(() => {
+    const ua = navigator.userAgent;
+    setIsApple(/iPhone|iPad|iPod/.test(ua) || (ua.includes("Macintosh") && navigator.maxTouchPoints > 1));
+  }, []);
   const [reminderSaving, setReminderSaving] = useState(false);
   const [reminderSaved, setReminderSaved] = useState(false);
   const [rotatingLink, setRotatingLink] = useState(false);
@@ -983,17 +989,61 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
                   </p>
                 </div>
 
-                <a
-                  href={`https://calendar.google.com/calendar/r/settings/addbyurl?cid=${encodeURIComponent(
-                    syncFeedUrl.replace(/^https?:\/\//, "webcal://")
-                  )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-4 min-h-[44px] rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition-colors flex items-center gap-1.5 shadow-xs whitespace-nowrap"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  <span>הוסף ישירות ל-Google Calendar</span>
-                </a>
+              </div>
+
+              {/* How to connect: Apple (iPhone only) and Google, step by step */}
+              <div className="space-y-3">
+                {isApple && (
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-2">
+                    <h4 className="text-sm font-extrabold text-slate-900">יומן האייפון (של אפל)</h4>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      לחיצה אחת. היומן נוסף ליומן של האייפון, כולל ההתראה שבחרת.
+                    </p>
+                    <a
+                      href={syncFeedUrl.replace(/^https?:\/\//, "webcal://")}
+                      className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-4 min-h-[44px] rounded-xl bg-brand-600 text-white text-sm font-bold"
+                    >
+                      <Calendar className="w-4 h-4" />
+                      <span>הוסף ליומן של האייפון</span>
+                    </a>
+                  </div>
+                )}
+
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
+                  <h4 className="text-sm font-extrabold text-slate-900">יומן גוגל (אנדרואיד, או אייפון עם גוגל)</h4>
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-bold text-slate-700">שלב 1: מוסיפים את היומן לחשבון</p>
+                    <a
+                      href={`https://calendar.google.com/calendar/r/settings/addbyurl?cid=${encodeURIComponent(
+                        syncFeedUrl.replace(/^https?:\/\//, "webcal://")
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-4 min-h-[44px] rounded-xl bg-brand-600 text-white text-sm font-bold"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      <span>הוסף ליומן גוגל</span>
+                    </a>
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-bold text-slate-700">שלב 2: מפעילים סנכרון לטלפון</p>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      בעמוד שייפתח מסמנים וי ליד היומן של העסק ושומרים. בלי זה היומן יופיע רק באתר ולא באפליקציה.
+                    </p>
+                    <a
+                      href="https://calendar.google.com/calendar/syncselect"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-4 min-h-[44px] rounded-xl border-2 border-brand-600 text-brand-700 text-sm font-bold bg-white"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      <span>הפעל סנכרון לטלפון</span>
+                    </a>
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    גוגל מרענן יומן כזה כל כמה שעות, ולכן תור חדש יכול להופיע באיחור. אם האפליקציה כותבת שהחשבון לא מגיב, מנסים שוב אחרי כמה דקות.
+                  </p>
+                </div>
               </div>
 
               {/* Feed URL Box */}

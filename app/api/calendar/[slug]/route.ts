@@ -21,6 +21,29 @@ function escapeIcsText(text: string): string {
     .replace(/[\r\x00-\x08\x0b-\x1f]/g, "");
 }
 
+/** RFC 5545: lines are at most 75 octets; longer ones continue on the next line after a space. */
+function foldLine(line: string): string {
+  const enc = new TextEncoder();
+  if (enc.encode(line).length <= 75) return line;
+  const parts: string[] = [];
+  let cur = "";
+  let bytes = 0;
+  let limit = 75;
+  for (const ch of line) {
+    const n = enc.encode(ch).length;
+    if (bytes + n > limit) {
+      parts.push(cur);
+      cur = "";
+      bytes = 0;
+      limit = 74; // the leading space of a continuation line counts too
+    }
+    cur += ch;
+    bytes += n;
+  }
+  parts.push(cur);
+  return parts.join("\r\n ");
+}
+
 /** "בעוד שעה" / "בעוד 30 דקות" ... the lead time as it reads in the alert. */
 function reminderLead(minutes: number): string {
   if (minutes < 60) return `בעוד ${minutes} דקות`;
@@ -44,7 +67,8 @@ async function feedTokenValid(businessId: string, version: number | undefined, t
 
 export async function GET(request: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   try {
-    if (!rateLimit(`ics:${clientIp(request)}`, 60, 10 * 60 * 1000)) return tooMany();
+    const { slug: feedSlug } = await ctx.params;
+    if (!rateLimit(`ics:${feedSlug}:${clientIp(request)}`, 120, 10 * 60 * 1000)) return tooMany();
 
     const { slug } = await ctx.params;
     const business = await getBusinessBySlug(slug);
@@ -119,7 +143,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ slug: s
 
     icsContent.push("END:VCALENDAR");
 
-    return new NextResponse(icsContent.join("\r\n"), {
+    return new NextResponse(icsContent.map(foldLine).join("\r\n"), {
       status: 200,
       headers: {
         "Content-Type": "text/calendar; charset=utf-8",
