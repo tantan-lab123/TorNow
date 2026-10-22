@@ -21,6 +21,7 @@ import { clientIp, rateLimit, tooMany } from "@/lib/rateLimit";
 import { forgetCredentialCache, getValidSession, requireRole, MANAGEMENT, OWNER_ONLY } from "@/lib/access";
 import { sanitizeDateOverrides, sanitizeSettings, sanitizeWorkingHours } from "@/lib/validation";
 import { randomBusinessSlug } from "@/lib/slug";
+import { disconnectCalendarQuietly } from "@/lib/google-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -242,6 +243,7 @@ export async function DELETE(request: NextRequest) {
     const id = request.nextUrl.searchParams.get("id");
     if (id && id !== sessionId) return forbidden();
 
+    await disconnectCalendarQuietly(sessionId);
     await deleteBusiness(sessionId);
 
     const res = NextResponse.json({
