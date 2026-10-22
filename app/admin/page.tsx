@@ -1799,7 +1799,7 @@ export default function AdminDashboardPage() {
   // AUTHENTICATED: SCOPED PRIVATE DASHBOARD
   // =========================================================================
   return (
-    <div className="min-h-screen bg-paper text-ink-900 pb-28 md:pb-24">
+    <div className="min-h-screen bg-paper text-ink-900 pb-28 md:pb-24 overflow-x-clip">
       {/* SaaS 11-Destination Top Navigation Bar */}
       <AdminTopBar
         business={selectedBusiness}

@@ -1001,15 +1001,15 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
                 <label className="block text-xs font-bold text-slate-700">
                   קישור סנכרון חי (iCalendar / Webcal Feed URL)
                 </label>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                   <input
                     type="text"
                     readOnly
                     value={syncFeedUrl}
-                    className="flex-1 h-11 rounded-xl border border-slate-200 px-3 text-xs bg-slate-50 font-mono text-slate-700 text-left select-all"
+                    className="w-full min-w-0 sm:flex-1 h-11 rounded-xl border border-slate-200 px-3 text-xs bg-slate-50 font-mono text-slate-700 text-left select-all"
                     dir="ltr"
                   />
-                  <Button type="button" onClick={handleCopySync} className="h-11 shadow-xs whitespace-nowrap">
+                  <Button type="button" onClick={handleCopySync} className="h-11 w-full sm:w-auto shadow-xs whitespace-nowrap">
                     {copiedSyncUrl ? (
                       <>
                         <Check className="w-4 h-4 ml-1 text-emerald-300" />
