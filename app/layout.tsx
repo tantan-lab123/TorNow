@@ -20,7 +20,7 @@ const heebo = Heebo({
   display: "swap",
 });
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://torli-eight.vercel.app";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tornow-eight.vercel.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

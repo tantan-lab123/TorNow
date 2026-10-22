@@ -191,7 +191,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
 
   const bookingUrl = typeof window !== "undefined"
     ? `${window.location.origin}/${business.slug}`
-    : `https://torli-eight.vercel.app/${business.slug}`;
+    : `https://tornow-eight.vercel.app/${business.slug}`;
 
   // The counter QR is drawn here in the browser (no third-party QR service)
   const [qrCodeImgUrl, setQrCodeImgUrl] = useState<string | null>(null);
@@ -917,7 +917,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
         )}
         {/* TAB 4: GOOGLE CALENDAR & APPLE CALENDAR LIVE SYNC */}
         {subTab === "sync" && (() => {
-          const origin = typeof window !== "undefined" ? window.location.origin : "https://torli-eight.vercel.app";
+          const origin = typeof window !== "undefined" ? window.location.origin : "https://tornow-eight.vercel.app";
           const syncFeedUrl = `${origin}/api/calendar/${business.slug}?t=${business.calendar_token ?? ""}`;
 
           const handleRotateLink = async () => {

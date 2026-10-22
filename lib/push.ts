@@ -18,7 +18,7 @@ async function ensureVapid(): Promise<string> {
         pub = (await getSecret("vapid_public")) || pub;
         priv = (await getSecret("vapid_private")) || priv;
       }
-      webpush.setVapidDetails(process.env.NEXT_PUBLIC_SITE_URL || "https://torli-eight.vercel.app", pub!, priv!);
+      webpush.setVapidDetails(process.env.NEXT_PUBLIC_SITE_URL || "https://tornow-eight.vercel.app", pub!, priv!);
       return pub!;
     })().catch((e) => {
       configured = null;
