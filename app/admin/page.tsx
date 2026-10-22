@@ -1284,6 +1284,13 @@ export default function AdminDashboardPage() {
                 </Button>
               </form>
 
+              <p className="text-center text-[11px] leading-relaxed text-ink-500">
+                בהמשך אתם מאשרים את{" "}
+                <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-bold underline">תנאי השימוש</a>{" "}
+                ואת{" "}
+                <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-bold underline">מדיניות הפרטיות</a>.
+              </p>
+
               <div className="text-center">
                 <button
                   type="button"
@@ -1590,6 +1597,13 @@ export default function AdminDashboardPage() {
                       : "המשך להגדרת שעות פעילות"}
                   </span>
                 </Button>
+
+                <p className="text-center text-[11px] leading-relaxed text-ink-500">
+                  בהרשמה אתם מאשרים את{" "}
+                  <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-bold underline">תנאי השימוש</a>{" "}
+                  ואת{" "}
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-bold underline">מדיניות הפרטיות</a>.
+                </p>
               </form>
             </Card>
           )}

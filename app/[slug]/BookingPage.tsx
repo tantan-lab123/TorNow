@@ -1367,6 +1367,12 @@ export default function BookingPage() {
                   </button>
                 </div>
               )}
+              <p className="text-[11px] leading-relaxed text-ink-500">
+                בהמשך אתם מאשרים את{" "}
+                <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-bold underline">תנאי השימוש</a>{" "}
+                ואת{" "}
+                <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-bold underline">מדיניות הפרטיות</a>.
+              </p>
             </div>
 
             {/* Returning Client Banner */}
