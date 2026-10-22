@@ -2,7 +2,7 @@ import { z } from "zod";
 import { decryptToken, encryptToken } from "@/lib/crypto-token";
 import { BUSINESS_TZ } from "@/lib/booking/slotGenerator";
 import { DEFAULT_CALENDAR_REMINDER_MINUTES } from "@/lib/validation";
-import type { Appointment, BusinessSettings, Client, Service } from "@/lib/types";
+import type { Appointment, BusinessSettings, Service } from "@/lib/types";
 
 /**
  * One-way sync: TorNow appointments -> the business owner's Google Calendar.
@@ -20,6 +20,8 @@ export const DEDICATED_CALENDAR_NAME = "TorNow – תורים";
 export const BACKOFF_MINUTES = [1, 5, 15, 60, 240] as const;
 export const MAX_RETRIES = BACKOFF_MINUTES.length;
 const ACCESS_TOKEN_SAFETY_MS = 60_000;
+/** A run that never finished is picked up again after this long. */
+const STUCK_GUARD_MINUTES = 2;
 
 // -------------------------------------------------------------------------- errors
 export class GoogleNotConfiguredError extends Error {
@@ -184,7 +186,7 @@ export async function getAccessToken(businessId: string, refreshToken: string, n
 export interface SyncContext {
   appointment: Appointment;
   service?: Pick<Service, "name"> | null;
-  client?: Pick<Client, "first_name" | "last_name" | "phone" | "email"> | null;
+  client?: { first_name: string; last_name: string; phone: string; email?: string | null } | null;
   business: { id: string; name: string; settings?: BusinessSettings };
 }
 
@@ -416,10 +418,27 @@ export async function reconcileAppointment(
   if (!appointment.service_id) return "skipped";
 
   const connection = await repo.getConnection(appointment.business_id);
-  if (!connection || connection.status !== "active") return "skipped";
+  if (!connection) {
+    // disconnected meanwhile: do not leave it queued forever
+    if (appointment.sync_status && appointment.sync_status !== "not_connected") {
+      await repo.markSync(appointmentId, { status: "not_connected", error: null, nextAttemptAt: null });
+    }
+    return "skipped";
+  }
+  if (connection.status !== "active") {
+    // waits for the owner to reconnect (the reconnect re-queues failed ones)
+    if (appointment.sync_status === "pending") {
+      await repo.markSync(appointmentId, { status: "failed", error: "google_auth_revoked", nextAttemptAt: null });
+    }
+    return "skipped";
+  }
 
   const failedBefore = appointment.sync_retry_count ?? 0;
-  await repo.markSync(appointmentId, { status: "pending" });
+  // If this run dies half way, the retry job finds the row again after a couple of minutes.
+  await repo.markSync(appointmentId, {
+    status: "pending",
+    nextAttemptAt: new Date(now().getTime() + STUCK_GUARD_MINUTES * 60_000).toISOString(),
+  });
 
   try {
     const refreshToken = decryptToken(connection.refresh_token_encrypted, connection.business_id);
