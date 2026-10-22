@@ -10,6 +10,18 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
+  // The product moved from torli-eight.vercel.app: old links and QR codes keep working.
+  // Temporary (307) on purpose; switch to permanent once the move is settled.
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "torli-eight.vercel.app" }],
+        destination: "https://tornow-eight.vercel.app/:path*",
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
