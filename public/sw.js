@@ -1,6 +1,6 @@
 // Service worker: shows web-push notifications for new appointments.
 self.addEventListener("push", (event) => {
-  let data = { title: "Torli", body: "", url: "/admin" };
+  let data = { title: "TorNow", body: "", url: "/admin" };
   try {
     data = { ...data, ...event.data.json() };
   } catch (e) {

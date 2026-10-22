@@ -56,7 +56,7 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ slug: s
     const icsContent = [
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
-      "PRODID:-//Torli//Appointment Scheduler//HE",
+      "PRODID:-//TorNow//Appointment Scheduler//HE",
       "CALSCALE:GREGORIAN",
       "METHOD:PUBLISH",
       `X-WR-CALNAME:${escapeIcsText(business.name)} - תורים`,
@@ -76,14 +76,14 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ slug: s
         `טלפון: ${phone}`,
         `שירות: ${serviceName}`,
         `מחיר: ₪${price}`,
-        "נקבע דרך מערכת Torli",
+        "נקבע דרך מערכת TorNow",
       ]
         .map(escapeIcsText)
         .join("\\n");
 
       icsContent.push(
         "BEGIN:VEVENT",
-        `UID:${app.id}@torli.app`,
+        `UID:${app.id}@tornow.app`,
         `DTSTAMP:${nowIcs}`,
         `DTSTART:${toIcsDate(app.start_time)}`,
         `DTEND:${toIcsDate(app.end_time)}`,

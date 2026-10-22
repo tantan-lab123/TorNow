@@ -149,7 +149,7 @@ export default function AdminDashboardPage() {
   // Sound & Live New Booking Notification
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
     if (typeof window === "undefined") return true;
-    return localStorage.getItem("torli_admin_sound") !== "false";
+    return localStorage.getItem("tornow_admin_sound") !== "false";
   });
   const [newBookingBanner, setNewBookingBanner] = useState<{
     id: string;
@@ -316,7 +316,7 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     const restoreSession = async () => {
       // If user explicitly logged out in this browser session, do not auto-restore!
-      if (sessionStorage.getItem("torli_user_logged_out") === "true") {
+      if (sessionStorage.getItem("tornow_user_logged_out") === "true") {
         setIsLoading(false);
         return;
       }
@@ -352,7 +352,7 @@ export default function AdminDashboardPage() {
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         // If user explicitly logged out, do NOT auto-login from cached session!
-        if (sessionStorage.getItem("torli_user_logged_out") === "true") {
+        if (sessionStorage.getItem("tornow_user_logged_out") === "true") {
           return;
         }
 
@@ -418,7 +418,7 @@ export default function AdminDashboardPage() {
 
   // Handle Private Owner Login
   const handleLoginSubmit = async (e: React.FormEvent) => {
-    sessionStorage.removeItem("torli_user_logged_out");
+    sessionStorage.removeItem("tornow_user_logged_out");
     e.preventDefault();
     setLoginError("");
     setIsLoggingIn(true);
@@ -467,7 +467,7 @@ export default function AdminDashboardPage() {
 
   // Handle Google Sign-in for Business Owner
   const handleGoogleOwnerLogin = async () => {
-    sessionStorage.removeItem("torli_user_logged_out");
+    sessionStorage.removeItem("tornow_user_logged_out");
     setLoginError("");
     setIsLoggingIn(true);
     triggerHaptic(20);
@@ -511,7 +511,7 @@ export default function AdminDashboardPage() {
 
   // Handle Logout
   const handleLogout = async () => {
-    sessionStorage.setItem("torli_user_logged_out", "true");
+    sessionStorage.setItem("tornow_user_logged_out", "true");
     try {
       await fetch("/api/auth/logout", { method: "POST" });
     } catch {
@@ -1463,7 +1463,7 @@ export default function AdminDashboardPage() {
                     </button>
                   </div>
                   <div className="flex items-center rounded-2xl border border-slate-200 bg-white px-3 h-12 ltr focus-within:border-indigo-600 focus-within:ring-4 focus-within:ring-indigo-500/15 transition-all">
-                    <span className="text-xs text-ink-500 font-mono">torli.app/</span>
+                    <span className="text-xs text-ink-500 font-mono">{typeof window !== "undefined" ? window.location.host : ""}/</span>
                     <input
                       type="text"
                       value={regSlug}
@@ -1481,7 +1481,7 @@ export default function AdminDashboardPage() {
                     />
                   </div>
                   <p className="text-[11px] text-ink-500 mt-1 text-right">
-                    כתובת מקוצרת וקלה לשיתוף (למשל torli-eight.vercel.app/{regSlug || "kx9m2p"})
+                    כתובת מקוצרת וקלה לשיתוף (למשל {typeof window !== "undefined" ? window.location.host : ""}/{regSlug || "kx9m2p"})
                   </p>
                 </div>
 
@@ -1667,7 +1667,7 @@ export default function AdminDashboardPage() {
               <span>הגדרת שעות פתיחה לעסק</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900">
-              ברוך הבא ל-Torli, {selectedBusiness.name}
+              ברוך הבא ל-TorNow, {selectedBusiness.name}
             </h1>
             <p className="text-sm text-slate-500 max-w-lg mx-auto leading-relaxed">
               העסק נוצר בהצלחה! כעת בחר באילו ימים ושעות העסק שלך יהיה פתוח לקבלת תורים מלקוחות.
@@ -2087,7 +2087,7 @@ export default function AdminDashboardPage() {
                       triggerHaptic(15);
                       const next = !soundEnabled;
                       setSoundEnabled(next);
-                      localStorage.setItem("torli_admin_sound", String(next));
+                      localStorage.setItem("tornow_admin_sound", String(next));
                       if (next) playNotificationChime();
                     }}
                     aria-pressed={soundEnabled}

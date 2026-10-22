@@ -17,20 +17,20 @@ import { RevealObserver } from "@/components/landing/RevealObserver";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Torli | יומן תורים אונליין לעסקים",
+  title: "TorNow | יומן תורים אונליין לעסקים",
   description:
     "הלקוחות קובעים, משנים ומבטלים תורים לבד מקישור אחד, ואתם מקבלים התראה ורואים הכל ביומן בטלפון. בלי אפליקציה ללקוח.",
   alternates: { canonical: "/" },
   openGraph: {
-    title: "Torli | יומן תורים אונליין לעסקים",
+    title: "TorNow | יומן תורים אונליין לעסקים",
     description:
       "הלקוחות קובעים, משנים ומבטלים תורים לבד מקישור אחד. בלי שיחות, בלי התכתבויות ובלי אפליקציה ללקוח.",
     type: "website",
     locale: "he_IL",
-    siteName: "Torli",
+    siteName: "TorNow",
     url: "/",
   },
-  twitter: { card: "summary", title: "Torli | יומן תורים אונליין לעסקים" },
+  twitter: { card: "summary", title: "TorNow | יומן תורים אונליין לעסקים" },
 };
 
 // Demo booking pages the landing page links to, in order of preference. Only the ones
@@ -197,7 +197,7 @@ export default async function HomePage() {
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-ink-200 bg-paper/90 backdrop-blur-md">
         <div className={cn(frame, "flex h-16 items-center gap-8 px-5 sm:px-8 lg:px-10")}>
-          <Link href="/" aria-label="Torli, לעמוד הבית" className="flex-none">
+          <Link href="/" aria-label="TorNow, לעמוד הבית" className="flex-none">
             <Logo />
           </Link>
           <nav aria-label="בעמוד הזה" className="hidden items-center gap-1 lg:flex">
@@ -284,7 +284,7 @@ export default async function HomePage() {
         </section>
 
         {/* Facts */}
-        <section aria-label="Torli בקצרה" className="border-y border-ink-200 bg-white">
+        <section aria-label="TorNow בקצרה" className="border-y border-ink-200 bg-white">
           <ul className={cn(frame, "grid grid-cols-2 lg:grid-cols-4")}>
             {FACTS.map((f, i) => (
               <li
@@ -351,7 +351,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* The pain, and what Torli does about it */}
+        {/* The pain, and what TorNow does about it */}
         <section className="overflow-hidden border-t border-brand-800 bg-brand-700 text-paper">
           <div
             className={cn(
@@ -368,7 +368,7 @@ export default async function HomePage() {
                 <span className="whitespace-nowrap">״יש לך משהו מחר?״,</span>{" "}
                 <span className="whitespace-nowrap">״אפשר להזיז לחמישי?״,</span>{" "}
                 <span className="whitespace-nowrap">״כמה זה עולה?״.</span> כל הודעה כזאת עוצרת לכם את העבודה באמצע. עם
-                Torli הלקוחות מסדרים את זה לבד, ואתם רואים רק את התוצאה ביומן.
+                TorNow הלקוחות מסדרים את זה לבד, ואתם רואים רק את התוצאה ביומן.
               </p>
             </div>
             <ChaosToOrder />
@@ -377,7 +377,7 @@ export default async function HomePage() {
 
         {/* Kinds of businesses */}
         <div className="l-marquee-wrap overflow-hidden border-b border-ink-200 bg-white">
-          <p className="sr-only">Torli מתאים ל{KINDS.join(", ")}.</p>
+          <p className="sr-only">TorNow מתאים ל{KINDS.join(", ")}.</p>
           <div aria-hidden="true" className="l-marquee flex w-max">
             {[0, 1].map((copy) => (
               <ul key={copy} className="flex flex-none items-center">
@@ -415,7 +415,7 @@ export default async function HomePage() {
             <SectionLabel n="03">הצד שלכם</SectionLabel>
             <h2 className={cn(h2, "mt-6 max-w-[18ch]")}>כל העסק בטלפון אחד.</h2>
             <p className={cn(lead, "mt-5 max-w-[52ch]")}>
-              יומן, לקוחות ומספרים, מסודרים בלשוניות בתחתית המסך. מוסיפים את Torli למסך הבית ומקבלים התראה על כל תור.
+              יומן, לקוחות ומספרים, מסודרים בלשוניות בתחתית המסך. מוסיפים את TorNow למסך הבית ומקבלים התראה על כל תור.
             </p>
             <div className="mt-12 lg:mt-16">
               <OwnerTour />
@@ -541,7 +541,7 @@ export default async function HomePage() {
             />
           </div>
           <div className="mt-12 flex flex-col justify-between gap-2 border-t border-ink-200 pt-6 text-[14px] text-ink-600 sm:flex-row">
-            <span>© Torli</span>
+            <span>© TorNow</span>
             <span>תורים לעסקים קטנים בישראל</span>
           </div>
         </div>

@@ -20,7 +20,7 @@ type Item = {
   y: number;
 };
 
-// Every message here is something Torli lets the client do alone.
+// Every message here is something TorNow lets the client do alone.
 const ITEMS: Item[] = [
   { who: "אבי", color: "#2F6B4B", at: "07:58", text: "היי, יש לך משהו מחר בבוקר?", done: "קבע תור לבד", when: "מחר · 09:30", tilt: -2.6, x: 12, y: 3 },
   { who: "שירן", color: "#7A3B69", at: "08:12", text: "אפשר להזיז את התור שלי לחמישי?", done: "העבירה את התור לבד", when: "חמישי · 16:00", tilt: 1.9, x: -14, y: -2 },
@@ -72,7 +72,7 @@ export function ChaosToOrder() {
     <div>
       <div
         role="group"
-        aria-label="להשוות בין העבודה בלי Torli לעבודה עם Torli"
+        aria-label="להשוות בין העבודה בלי TorNow לעבודה עם TorNow"
         className="relative grid w-full max-w-[340px] grid-cols-2 rounded-[10px] border border-brand-500/70 bg-brand-800 p-1"
       >
         <span
@@ -86,7 +86,7 @@ export function ChaosToOrder() {
           onClick={() => choose(false)}
           className={cn(segment, !order ? "text-ink-900" : "text-paper/75 hover:text-paper")}
         >
-          בלי Torli
+          בלי TorNow
         </button>
         <button
           type="button"
@@ -94,7 +94,7 @@ export function ChaosToOrder() {
           onClick={() => choose(true)}
           className={cn(segment, order ? "text-ink-900" : "text-paper/75 hover:text-paper")}
         >
-          עם Torli
+          עם TorNow
         </button>
       </div>
 
@@ -112,7 +112,7 @@ export function ChaosToOrder() {
             </span>
             <span className="grid [&>*]:col-start-1 [&>*]:row-start-1">
               <span className={cn("l-face", order && "opacity-0")}>הוואטסאפ של העסק</span>
-              <span className={cn("l-face", !order && "opacity-0")}>היומן ב-Torli</span>
+              <span className={cn("l-face", !order && "opacity-0")}>היומן ב-TorNow</span>
             </span>
           </span>
           <span

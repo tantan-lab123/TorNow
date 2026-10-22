@@ -28,7 +28,7 @@ export const dynamic = "force-dynamic";
 const RESERVED_SLUGS = new Set([
   "admin", "api", "cancel", "login", "logout", "register", "signup", "reset", "forgot",
   "manifest", "sitemap", "robots", "favicon", "icon", "apple", "static", "next", "public",
-  "app", "www", "torli", "support", "help", "terms", "privacy", "about", "contact",
+  "app", "www", "torli", "tornow", "support", "help", "terms", "privacy", "about", "contact",
 ]);
 
 const PASSWORD_ERROR =

@@ -5,10 +5,10 @@ import { createClient } from "@supabase/supabase-js";
 import type { Business } from "@/lib/types";
 import { dropLegacyPrefills } from "@/lib/validation";
 
-export const SESSION_COOKIE = "torli_session";
+export const SESSION_COOKIE = "tornow_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 14; // 14 days
 
-const g = globalThis as unknown as { __TORLI_DEV_SECRET__?: string };
+const g = globalThis as unknown as { __TORNOW_DEV_SECRET__?: string };
 function getSecret(): string {
   const s = process.env.SESSION_SECRET;
   if (s && s.length >= 32) return s;
@@ -21,8 +21,8 @@ function getSecret(): string {
     throw new Error("SESSION_SECRET (>=32 chars) or SUPABASE_SERVICE_ROLE_KEY must be set in production");
   }
   // dev only: shared across route bundles so sessions survive hot reloads
-  g.__TORLI_DEV_SECRET__ = g.__TORLI_DEV_SECRET__ || crypto.randomBytes(32).toString("hex");
-  return g.__TORLI_DEV_SECRET__;
+  g.__TORNOW_DEV_SECRET__ = g.__TORNOW_DEV_SECRET__ || crypto.randomBytes(32).toString("hex");
+  return g.__TORNOW_DEV_SECRET__;
 }
 
 function sign(data: string): string {

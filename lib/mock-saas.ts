@@ -87,7 +87,7 @@ export const DEFAULT_MARKETING_MESSAGES: MarketingMessage[] = [
     business_id: "biz-1",
     recipient_count: 142,
     channel: "sms",
-    content: "שנה טובה וחג שמח מכל צוות המספרה! 🍎🍯 מזמינים אתכם להבטיח תור לתספורת לחג בלינק: torli.app/barber-dan",
+    content: "שנה טובה וחג שמח מכל צוות המספרה! 🍎🍯 מזמינים אתכם להבטיח תור לתספורת לחג בלינק: tornow.app/barber-dan",
     sent_at: "2026-09-08 11:30",
     status: "delivered",
   },

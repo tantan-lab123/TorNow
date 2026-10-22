@@ -1,7 +1,7 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 
-/** The Torli mark: a "take a number" ticket with a perforation and a lime dot. */
+/** The TorNow mark: a "take a number" ticket with a perforation and a lime dot. */
 export function LogoMark({ size = 32, className }: { size?: number; className?: string }) {
   return (
     <svg
@@ -35,7 +35,7 @@ export function Logo({
     <span className={cn("inline-flex items-center gap-2.5", className)}>
       <LogoMark size={size} />
       <span className="flex flex-col leading-tight text-right">
-        <span className="font-extrabold text-[17px] tracking-tight text-ink-900">Torli</span>
+        <span className="font-extrabold text-[17px] tracking-tight text-ink-900">TorNow</span>
         {sub && <span className="text-xs text-ink-500 font-medium">{sub}</span>}
       </span>
     </span>

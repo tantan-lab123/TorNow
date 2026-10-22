@@ -30,7 +30,7 @@ export const MarketingSection: React.FC<MarketingSectionProps> = ({
   const [channel, setChannel] = useState<"sms" | "whatsapp">("sms");
   const [audience, setAudience] = useState<"all" | "active" | "inactive">("all");
   const [content, setContent] = useState(
-    `היי! 🌟 תזכורת חמה מ-${businessName}: מחכים לך לתור חדש! קביעת תור ישירה בלחיצה: torli.app/${businessSlug}`
+    `היי! 🌟 תזכורת חמה מ-${businessName}: מחכים לך לתור חדש! קביעת תור ישירה בלחיצה: ${typeof window !== "undefined" ? window.location.host : "tornow.app"}/${businessSlug}`
   );
 
   // Audience counts

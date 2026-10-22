@@ -32,7 +32,7 @@ type Kind = {
   services: Service[];
 };
 
-// Each point is a setting that exists in Torli today.
+// Each point is a setting that exists in TorNow today.
 const KINDS: Kind[] = [
   {
     id: "barber",

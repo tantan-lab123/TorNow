@@ -13,7 +13,7 @@ export default function NotFound() {
         href="/"
         className="m-key mt-8 inline-flex items-center justify-center h-12 px-6 rounded-lg bg-brand-600 text-white font-bold"
       >
-        לדף הבית של Torli
+        לדף הבית של TorNow
       </Link>
     </main>
   );

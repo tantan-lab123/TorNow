@@ -11,7 +11,7 @@ export async function isPasswordPwned(password: string): Promise<boolean> {
     const prefix = sha1.slice(0, 5);
     const suffix = sha1.slice(5);
     const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
-      headers: { "Add-Padding": "true", "User-Agent": "torli-password-check" },
+      headers: { "Add-Padding": "true", "User-Agent": "tornow-password-check" },
       signal: AbortSignal.timeout(2500),
       cache: "no-store",
     });

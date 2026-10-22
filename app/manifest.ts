@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Torli | יומן תורים",
-    short_name: "Torli",
+    name: "TorNow | יומן תורים",
+    short_name: "TorNow",
     description: "יומן תורים אונליין לעסקים: הלקוחות קובעים לבד, אתם רואים הכל בטלפון.",
     start_url: "/admin",
     scope: "/",

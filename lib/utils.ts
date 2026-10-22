@@ -209,7 +209,7 @@ export function generateIcsDataUrl({
   const icsContent = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Torli//HE",
+    "PRODID:-//TorNow//HE",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",
@@ -218,7 +218,7 @@ export function generateIcsDataUrl({
     `DTSTART:${formatDateToIcs(start)}`,
     `DTEND:${formatDateToIcs(end)}`,
     `DTSTAMP:${formatDateToIcs(new Date())}`,
-    `UID:${uid || Date.now()}@torli`,
+    `UID:${uid || Date.now()}@tornow`,
     ...(location ? [`LOCATION:${escapeIcsText(location)}`] : []),
     ...(url ? [`URL:${url}`] : []),
     "STATUS:CONFIRMED",

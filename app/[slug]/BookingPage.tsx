@@ -57,7 +57,7 @@ import { alertDialog } from "@/lib/dialogs";
 
 const STORAGE_KEY = "schedule_saved_client_v1";
 // Booking progress is parked here while the customer is away signing in with Google.
-const PENDING_KEY = "torli_pending_booking_v1";
+const PENDING_KEY = "tornow_pending_booking_v1";
 
 // The time page opens on these three tabs, so a long day is not one wall of times.
 const DAY_PARTS: { id: TimeSlot["period"]; label: string; hours: string }[] = [

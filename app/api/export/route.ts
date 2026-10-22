@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
   return new NextResponse(JSON.stringify(backup, null, 2), {
     headers: {
       "Content-Type": "application/json; charset=utf-8",
-      "Content-Disposition": `attachment; filename="torli-backup-${stamp}.json"`,
+      "Content-Disposition": `attachment; filename="tornow-backup-${stamp}.json"`,
       "Cache-Control": "private, no-store",
     },
   });

@@ -1,6 +1,6 @@
 import type { Config } from "tailwindcss";
 
-// Torli brand palette: bottle green on warm paper, with lime only for "now / next".
+// TorNow brand palette: bottle green on warm paper, with lime only for "now / next".
 // Older screens were written with indigo/violet/slate class names. Those names are
 // mapped onto the brand palette below so every screen (and any new code that still
 // uses them) stays on brand. Prefer the brand / paper / ink names in new code.

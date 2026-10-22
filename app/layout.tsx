@@ -24,14 +24,14 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://torli-eight.vercel
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "Torli | תורים בלי טלפונים",
+  title: "TorNow | תורים בלי טלפונים",
   description: "תורלי: קביעת תורים מהטלפון לעסקים קטנים. הלקוחות קובעים לבד, ותזכורת יוצאת מהוואטסאפ שלכם בלחיצה.",
-  applicationName: "Torli",
+  applicationName: "TorNow",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Torli",
+    title: "TorNow",
   },
 };
 

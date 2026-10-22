@@ -86,7 +86,7 @@ export async function brandedCard(title: string, subtitle: string, headers?: Rec
         }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 16 }}>
-          <div style={{ display: "flex", fontSize: 40, color: LIME }}>Torli</div>
+          <div style={{ display: "flex", fontSize: 40, color: LIME }}>TorNow</div>
           <div style={{ display: "flex", width: 24, height: 24, borderRadius: 24, background: LIME }} />
         </div>
 

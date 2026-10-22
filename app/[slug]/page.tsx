@@ -17,7 +17,7 @@ const loadBusiness = cache((slug: string) => getBusinessBySlug(slug));
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const business = await loadBusiness(slug);
-  if (!business) return { title: "העמוד לא נמצא | Torli" };
+  if (!business) return { title: "העמוד לא נמצא | TorNow" };
 
   // (never the old sample address some businesses still have stored)
   const address = dropLegacyPrefills(business.settings)?.address?.trim();
@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title,
     description,
-    openGraph: { title, description, type: "website", locale: "he_IL", siteName: "Torli", images: [image] },
+    openGraph: { title, description, type: "website", locale: "he_IL", siteName: "TorNow", images: [image] },
     twitter: { card: "summary_large_image", title, description, images: [image.url] },
   };
 }

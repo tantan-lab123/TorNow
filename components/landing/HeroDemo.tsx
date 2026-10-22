@@ -271,7 +271,7 @@ function PushBanner({ on }: { on: boolean }) {
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center justify-between text-[length:2.9cqw] text-ink-500">
-          <span className="font-bold tracking-wide">Torli</span>
+          <span className="font-bold tracking-wide">TorNow</span>
           <span>עכשיו</span>
         </span>
         <span className="block text-[length:3.6cqw] font-extrabold leading-tight text-ink-900">תור חדש נקבע</span>
