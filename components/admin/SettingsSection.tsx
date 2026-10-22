@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { BackupAndAlerts } from "@/components/admin/BackupAndAlerts";
+import { GoogleCalendarCard } from "@/components/admin/GoogleCalendarCard";
 import { triggerHaptic } from "@/lib/utils";
 import { alertDialog, confirmDialog } from "@/lib/dialogs";
 import { qrDataUrl } from "@/lib/qr";
@@ -117,11 +118,14 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
   const [subTab, setSubTab] = useState<"general" | "controls" | "qrcode" | "sync">("general");
   const [copiedSyncUrl, setCopiedSyncUrl] = useState(false);
   // iPhone / iPad: offer Apple's calendar next to Google's (detected after mount to avoid a hydration mismatch)
-  const [isApple, setIsApple] = useState(false);
-  useEffect(() => {
-    const ua = navigator.userAgent;
-    setIsApple(/iPhone|iPad|iPod/.test(ua) || (ua.includes("Macintosh") && navigator.maxTouchPoints > 1));
-  }, []);
+  const isApple = React.useSyncExternalStore(
+    () => () => undefined,
+    () => {
+      const ua = navigator.userAgent;
+      return /iPhone|iPad|iPod/.test(ua) || (ua.includes("Macintosh") && navigator.maxTouchPoints > 1);
+    },
+    () => false
+  );
   const [reminderSaving, setReminderSaving] = useState(false);
   const [reminderSaved, setReminderSaved] = useState(false);
   const [rotatingLink, setRotatingLink] = useState(false);
@@ -991,8 +995,14 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
 
               </div>
 
-              {/* How to connect: Apple (iPhone only) and Google, step by step */}
+              {/* Direct, instant connection (recommended) */}
+              <GoogleCalendarCard role={role} />
+
+              {/* How to connect by link: Apple (iPhone only) and Google, step by step */}
               <div className="space-y-3">
+                <p className="text-xs font-bold text-slate-500">
+                  או חיבור דרך קישור (מתעדכן לאט יותר, ויש בו שלב ידני לטלפון):
+                </p>
                 {isApple && (
                   <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-2">
                     <h4 className="text-sm font-extrabold text-slate-900">יומן האייפון (של אפל)</h4>

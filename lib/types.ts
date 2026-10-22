@@ -166,6 +166,13 @@ export interface Appointment {
   staff_id?: string | null;
   created_at?: string;
 
+  // Google Calendar sync (only meaningful when the business connected a calendar)
+  google_event_id?: string | null;
+  sync_status?: "pending" | "synced" | "failed" | "not_connected";
+  sync_error?: string | null;
+  sync_retry_count?: number;
+  sync_next_attempt_at?: string | null;
+
   // Joined fields for convenience
   service?: Service;
   client?: Client;

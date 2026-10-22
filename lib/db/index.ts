@@ -1370,3 +1370,281 @@ export async function getBusinessesByEmail(email: string): Promise<Business[]> {
   }
   return db.businesses.filter((b) => b.owner_email?.toLowerCase() === e).map(normalizeBusinessRecord);
 }
+
+// ==============================================================================
+// GOOGLE CALENDAR SYNC (connection + per-appointment sync bookkeeping)
+// ==============================================================================
+
+export interface GoogleConnectionRow {
+  business_id: string;
+  google_email: string;
+  refresh_token_encrypted: string;
+  calendar_id: string;
+  status: "active" | "needs_reconnect";
+}
+
+export interface GoogleSyncPatch {
+  status: "pending" | "synced" | "failed" | "not_connected";
+  /** undefined = leave as is, null = clear */
+  googleEventId?: string | null;
+  error?: string | null;
+  retryCount?: number;
+  nextAttemptAt?: string | null;
+}
+
+export interface GoogleSyncContextRow {
+  appointment: Appointment;
+  service: { name: string } | null;
+  client: { first_name: string; last_name: string; phone: string; email?: string | null } | null;
+  business: { id: string; name: string; settings?: Business["settings"] };
+}
+
+/** Retries are only attempted while the failure counter is at most this (initial try + 5 retries). */
+const GOOGLE_SYNC_MAX_RETRIES = 5;
+
+const mockGoogleConnections = new Map<string, GoogleConnectionRow>();
+
+type SyncColumns = {
+  sync_status: GoogleSyncPatch["status"];
+  google_event_id?: string | null;
+  sync_error?: string | null;
+  sync_retry_count?: number;
+  sync_next_attempt_at?: string | null;
+};
+
+function syncColumns(patch: GoogleSyncPatch): SyncColumns {
+  const cols: SyncColumns = { sync_status: patch.status };
+  if (patch.googleEventId !== undefined) cols.google_event_id = patch.googleEventId;
+  if (patch.error !== undefined) cols.sync_error = patch.error;
+  if (patch.retryCount !== undefined) cols.sync_retry_count = patch.retryCount;
+  if (patch.nextAttemptAt !== undefined) cols.sync_next_attempt_at = patch.nextAttemptAt;
+  return cols;
+}
+
+export async function getGoogleConnection(businessId: string): Promise<GoogleConnectionRow | null> {
+  if (isSupabaseConfigured && supabaseAdmin) {
+    const { data, error } = await supabaseAdmin
+      .from("google_calendar_connections")
+      .select("business_id,google_email,refresh_token_encrypted,calendar_id,status")
+      .eq("business_id", businessId)
+      .maybeSingle();
+    if (error) throw error;
+    return (data as GoogleConnectionRow | null) ?? null;
+  }
+  return mockGoogleConnections.get(businessId) ?? null;
+}
+
+export async function upsertGoogleConnection(row: GoogleConnectionRow): Promise<void> {
+  if (isSupabaseConfigured && supabaseAdmin) {
+    const { error } = await supabaseAdmin
+      .from("google_calendar_connections")
+      .upsert({ ...row, updated_at: new Date().toISOString() }, { onConflict: "business_id" });
+    if (error) throw error;
+    return;
+  }
+  mockGoogleConnections.set(row.business_id, { ...row });
+}
+
+export async function setGoogleConnectionStatus(
+  businessId: string,
+  status: GoogleConnectionRow["status"]
+): Promise<void> {
+  if (isSupabaseConfigured && supabaseAdmin) {
+    const { error } = await supabaseAdmin
+      .from("google_calendar_connections")
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq("business_id", businessId);
+    if (error) throw error;
+    return;
+  }
+  const row = mockGoogleConnections.get(businessId);
+  if (row) row.status = status;
+}
+
+export async function deleteGoogleConnection(businessId: string): Promise<void> {
+  if (isSupabaseConfigured && supabaseAdmin) {
+    const { error } = await supabaseAdmin.from("google_calendar_connections").delete().eq("business_id", businessId);
+    if (error) throw error;
+    return;
+  }
+  mockGoogleConnections.delete(businessId);
+}
+
+export async function getGoogleSyncContext(appointmentId: string): Promise<GoogleSyncContextRow | null> {
+  let appointment: Appointment | null = null;
+  let service: GoogleSyncContextRow["service"] = null;
+  let client: GoogleSyncContextRow["client"] = null;
+
+  if (isSupabaseConfigured && supabaseAdmin) {
+    const { data, error } = await supabaseAdmin
+      .from("appointments")
+      .select("*, service:services(name), client:clients(first_name,last_name,phone,email)")
+      .eq("id", appointmentId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    const { service: s, client: c, ...rest } = data as Appointment & {
+      service: GoogleSyncContextRow["service"];
+      client: GoogleSyncContextRow["client"];
+    };
+    appointment = rest as Appointment;
+    service = s ?? null;
+    client = c ?? null;
+  } else {
+    const found = db.appointments.find((a) => a.id === appointmentId);
+    if (!found) return null;
+    appointment = found;
+    const svc = db.services.find((x) => x.id === found.service_id);
+    const cli = db.clients.find((x) => x.id === found.client_id);
+    service = svc ? { name: svc.name } : null;
+    client = cli
+      ? { first_name: cli.first_name, last_name: cli.last_name, phone: cli.phone, email: cli.email ?? null }
+      : null;
+  }
+
+  const business = await getBusinessById(appointment.business_id);
+  if (!business) return null;
+  return {
+    appointment,
+    service,
+    client,
+    business: { id: business.id, name: business.name, settings: business.settings },
+  };
+}
+
+export async function markAppointmentSync(appointmentId: string, patch: GoogleSyncPatch): Promise<void> {
+  const cols = syncColumns(patch);
+  if (isSupabaseConfigured && supabaseAdmin) {
+    const { error } = await supabaseAdmin.from("appointments").update(cols).eq("id", appointmentId);
+    if (error) throw error;
+    return;
+  }
+  const a = db.appointments.find((x) => x.id === appointmentId);
+  if (a) Object.assign(a, cols);
+}
+
+export async function listAppointmentsDueForGoogleSync(nowIso: string, limit: number): Promise<string[]> {
+  if (isSupabaseConfigured && supabaseAdmin) {
+    const { data, error } = await supabaseAdmin
+      .from("appointments")
+      .select("id")
+      .in("sync_status", ["pending", "failed"])
+      .lte("sync_retry_count", GOOGLE_SYNC_MAX_RETRIES)
+      .not("sync_next_attempt_at", "is", null)
+      .lte("sync_next_attempt_at", nowIso)
+      .order("sync_next_attempt_at", { ascending: true })
+      .limit(limit);
+    if (error) throw error;
+    return (data ?? []).map((r: { id: string }) => r.id);
+  }
+  return db.appointments
+    .filter(
+      (a) =>
+        (a.sync_status === "pending" || a.sync_status === "failed") &&
+        (a.sync_retry_count ?? 0) <= GOOGLE_SYNC_MAX_RETRIES &&
+        !!a.sync_next_attempt_at &&
+        a.sync_next_attempt_at <= nowIso
+    )
+    .slice(0, limit)
+    .map((a) => a.id);
+}
+
+/** Confirmed appointments from now on become "pending", due right away. Returns how many. */
+export async function queueFutureAppointmentsForGoogleSync(businessId: string, nowIso: string): Promise<number> {
+  const cols: SyncColumns = {
+    sync_status: "pending",
+    sync_retry_count: 0,
+    sync_error: null,
+    sync_next_attempt_at: nowIso,
+  };
+  if (isSupabaseConfigured && supabaseAdmin) {
+    const { data, error } = await supabaseAdmin
+      .from("appointments")
+      .update(cols)
+      .eq("business_id", businessId)
+      .eq("status", "confirmed")
+      .not("service_id", "is", null)
+      .gte("start_time", nowIso)
+      .in("sync_status", ["not_connected", "failed"])
+      .select("id");
+    if (error) throw error;
+    return data?.length ?? 0;
+  }
+  const rows = db.appointments.filter(
+    (a) =>
+      a.business_id === businessId &&
+      a.status === "confirmed" &&
+      !!a.service_id &&
+      a.start_time >= nowIso &&
+      (a.sync_status === undefined || a.sync_status === "not_connected" || a.sync_status === "failed")
+  );
+  rows.forEach((a) => Object.assign(a, cols));
+  return rows.length;
+}
+
+export async function requeueFailedGoogleSyncs(businessId: string, nowIso: string): Promise<number> {
+  const cols: SyncColumns = {
+    sync_status: "pending",
+    sync_retry_count: 0,
+    sync_error: null,
+    sync_next_attempt_at: nowIso,
+  };
+  if (isSupabaseConfigured && supabaseAdmin) {
+    const { data, error } = await supabaseAdmin
+      .from("appointments")
+      .update(cols)
+      .eq("business_id", businessId)
+      .eq("sync_status", "failed")
+      .select("id");
+    if (error) throw error;
+    return data?.length ?? 0;
+  }
+  const rows = db.appointments.filter((a) => a.business_id === businessId && a.sync_status === "failed");
+  rows.forEach((a) => Object.assign(a, cols));
+  return rows.length;
+}
+
+/** After a disconnect: forget event ids and queue state for the business. */
+export async function clearGoogleSyncState(businessId: string): Promise<void> {
+  const cols: SyncColumns = {
+    sync_status: "not_connected",
+    google_event_id: null,
+    sync_error: null,
+    sync_retry_count: 0,
+    sync_next_attempt_at: null,
+  };
+  if (isSupabaseConfigured && supabaseAdmin) {
+    const { error } = await supabaseAdmin
+      .from("appointments")
+      .update(cols)
+      .eq("business_id", businessId)
+      .neq("sync_status", "not_connected");
+    if (error) throw error;
+    return;
+  }
+  db.appointments
+    .filter((a) => a.business_id === businessId && a.sync_status && a.sync_status !== "not_connected")
+    .forEach((a) => Object.assign(a, cols));
+}
+
+export async function countGoogleSyncs(
+  businessId: string
+): Promise<{ failed: number; pending: number }> {
+  if (isSupabaseConfigured && supabaseAdmin) {
+    const count = async (status: "failed" | "pending"): Promise<number> => {
+      const { count: n, error } = await supabaseAdmin!
+        .from("appointments")
+        .select("id", { count: "exact", head: true })
+        .eq("business_id", businessId)
+        .eq("sync_status", status);
+      if (error) throw error;
+      return n ?? 0;
+    };
+    return { failed: await count("failed"), pending: await count("pending") };
+  }
+  const mine = db.appointments.filter((a) => a.business_id === businessId);
+  return {
+    failed: mine.filter((a) => a.sync_status === "failed").length,
+    pending: mine.filter((a) => a.sync_status === "pending").length,
+  };
+}

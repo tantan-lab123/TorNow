@@ -13,6 +13,7 @@ import { clientIp, rateLimit, tooMany } from "@/lib/rateLimit";
 import { customerChangePolicy } from "@/lib/booking/policy";
 import { generateAvailableSlots, israelDateString } from "@/lib/booking/slotGenerator";
 import { notifyBusiness } from "@/lib/push";
+import { syncAppointment } from "@/lib/google-sync";
 import { formatHebrewDate, formatTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -95,6 +96,9 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ id: st
     const oldStart = appt.start_time;
     const moved = await rescheduleAppointment(appt.id, newStart.toISOString(), newEnd.toISOString());
     if (!moved) return NextResponse.json({ error: "התור לא נמצא" }, { status: 404 });
+
+    // Owner's Google Calendar: the event moves with the appointment
+    after(() => syncAppointment(moved.id));
 
     after(async () => {
       try {

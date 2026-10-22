@@ -13,6 +13,7 @@ import { clientIp, rateLimit, tooMany } from "@/lib/rateLimit";
 import { customerChangePolicy } from "@/lib/booking/policy";
 import { israelDateString } from "@/lib/booking/slotGenerator";
 import { notifyBusiness } from "@/lib/push";
+import { syncAppointment } from "@/lib/google-sync";
 import { formatHebrewDate, formatTime, isBlockedTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -125,6 +126,9 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
       const u = await updateAppointmentStatus(params.id, status);
       if (!u) return NextResponse.json({ error: "התור לא נמצא" }, { status: 404 });
       updated = u;
+
+      // Owner's Google Calendar: cancelled -> removed, restored -> created again
+      after(() => syncAppointment(u.id));
 
       // A freed slot: flag everyone waiting for that day, and tell the owner.
       if (status === "cancelled" && existing.status === "confirmed" && existing.service_id) {

@@ -26,6 +26,7 @@ import { after } from "next/server";
 import { forbidden, verifyGoogleAccessToken } from "@/lib/auth";
 import { getValidSession, requireRole, ANY_ROLE } from "@/lib/access";
 import { notifyBusiness } from "@/lib/push";
+import { syncAppointment } from "@/lib/google-sync";
 import { formatHebrewDate, formatTime } from "@/lib/utils";
 import { TZDate } from "@date-fns/tz";
 import {
@@ -270,6 +271,9 @@ export async function POST(request: NextRequest) {
         await setAppointmentStaff(appointment.id, st.id);
       }
     }
+
+    // Owner's Google Calendar (only when connected). Never blocks or fails the booking.
+    after(() => syncAppointment(appointment.id));
 
     // Free browser push to the owner's devices (does not delay the response)
     if (!isTeam) {
