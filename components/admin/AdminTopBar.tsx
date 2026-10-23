@@ -9,7 +9,7 @@ import {
   Clock,
   UserCheck,
   Package,
-  Megaphone,
+  MessageSquare,
   CreditCard,
   Settings,
   ExternalLink,
@@ -21,18 +21,9 @@ import {
 import { Business } from "@/lib/types";
 import { cn, triggerHaptic } from "@/lib/utils";
 import { LogoMark } from "@/components/brand/Logo";
+import { ADMIN_TABS, visibleNavItems, type AdminTab } from "@/lib/admin-nav";
 
-export type AdminTab =
-  | "calendar"
-  | "stats"
-  | "customers"
-  | "services"
-  | "workschedule"
-  | "employees"
-  | "products"
-  | "marketing"
-  | "cashregister"
-  | "settings";
+export type { AdminTab };
 
 interface AdminTopBarProps {
   business: Business;
@@ -43,26 +34,25 @@ interface AdminTopBarProps {
   staffName?: string;
 }
 
+const TAB_ICONS: Record<AdminTab, React.ElementType> = {
+  calendar: CalendarDays,
+  stats: BarChart3,
+  customers: Users,
+  messages: MessageSquare,
+  services: Scissors,
+  workschedule: Clock,
+  employees: UserCheck,
+  products: Package,
+  cashregister: CreditCard,
+  settings: Settings,
+};
+
 export const ADMIN_NAV_ITEMS: {
   id: AdminTab;
   label: string;
   icon: React.ElementType;
   badge?: string;
-}[] = [
-  { id: "calendar", label: "יומן", icon: CalendarDays },
-  { id: "stats", label: "סטטיסטיקות", icon: BarChart3 },
-  { id: "customers", label: "לקוחות", icon: Users },
-  { id: "services", label: "שירותים", icon: Scissors },
-  { id: "workschedule", label: "שעות פעילות", icon: Clock },
-  { id: "employees", label: "צוות", icon: UserCheck },
-  { id: "products", label: "מוצרים", icon: Package },
-  { id: "marketing", label: "הודעות", icon: Megaphone, badge: "בקרוב" },
-  { id: "cashregister", label: "קופה", icon: CreditCard, badge: "בקרוב" },
-  { id: "settings", label: "הגדרות", icon: Settings },
-];
-
-// Sections that still show sample data only; hidden until they work for real.
-export const HIDDEN_TABS: AdminTab[] = ["products", "marketing", "cashregister"];
+}[] = ADMIN_TABS.map((t) => ({ ...t, icon: TAB_ICONS[t.id] }));
 
 // Phone tab bar: two tabs on each side of the center "new appointment" button (AdminFAB).
 const BAR_START: AdminTab[] = ["calendar", "customers"];
@@ -79,12 +69,8 @@ export const AdminTopBar: React.FC<AdminTopBarProps> = ({
   const [moreOpen, setMoreOpen] = useState(false);
 
   // The server enforces permissions; this just hides what the person cannot use.
-  const items = ADMIN_NAV_ITEMS.filter((i) => {
-    if (HIDDEN_TABS.includes(i.id)) return false;
-    if (role === "staff") return i.id === "calendar" || i.id === "customers";
-    if (role === "manager") return i.id !== "employees";
-    return true;
-  });
+  const visible = visibleNavItems(role).map((t) => t.id);
+  const items = ADMIN_NAV_ITEMS.filter((i) => visible.includes(i.id));
   const has = (id: AdminTab) => items.some((i) => i.id === id);
   const barEnd = BAR_END.filter(has);
   const moreItems = items.filter((i) => !BAR_START.includes(i.id) && !barEnd.includes(i.id));

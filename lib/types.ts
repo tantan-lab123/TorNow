@@ -119,16 +119,6 @@ export interface Product {
   created_at?: string;
 }
 
-export interface MarketingMessage {
-  id: string;
-  business_id: string;
-  recipient_count: number;
-  channel: 'sms' | 'whatsapp';
-  content: string;
-  sent_at: string;
-  status: 'delivered' | 'pending' | 'failed';
-}
-
 export interface AttendanceRecord {
   id: string;
   business_id: string;
