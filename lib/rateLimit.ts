@@ -4,9 +4,13 @@ import type { NextRequest } from "next/server";
 // serverless production, back this with Redis/Upstash for strict guarantees.
 const buckets = new Map<string, { count: number; reset: number }>();
 
+export function clientIpFromHeaders(headers: Headers): string {
+  const xf = headers.get("x-forwarded-for");
+  return (xf ? xf.split(",")[0].trim() : headers.get("x-real-ip")) || "unknown";
+}
+
 export function clientIp(request: NextRequest): string {
-  const xf = request.headers.get("x-forwarded-for");
-  return (xf ? xf.split(",")[0].trim() : request.headers.get("x-real-ip")) || "unknown";
+  return clientIpFromHeaders(request.headers);
 }
 
 /** Returns true when the request is ALLOWED. */

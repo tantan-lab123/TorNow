@@ -6,15 +6,13 @@ import {
   getStaffById,
   openWaitlistForSlot,
   setAppointmentStaff,
-  updateAppointmentStatus,
 } from "@/lib/db";
 import { getValidSession, requireRole, ANY_ROLE } from "@/lib/access";
 import { clientIp, rateLimit, tooMany } from "@/lib/rateLimit";
 import { customerChangePolicy } from "@/lib/booking/policy";
 import { israelDateString } from "@/lib/booking/slotGenerator";
-import { notifyBusiness } from "@/lib/push";
-import { syncAppointment } from "@/lib/google-sync";
-import { formatHebrewDate, formatTime, isBlockedTime } from "@/lib/utils";
+import { applyStatusChange } from "@/lib/booking/changes";
+import { isBlockedTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -123,34 +121,10 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
 
     let updated = existing;
     if (status !== undefined) {
-      const u = await updateAppointmentStatus(params.id, status);
+      // Same code as the SMS manage link: calendar sync, waiting list and owner push
+      const u = await applyStatusChange(existing, status, isTeam);
       if (!u) return NextResponse.json({ error: "התור לא נמצא" }, { status: 404 });
       updated = u;
-
-      // Owner's Google Calendar: cancelled -> removed, restored -> created again
-      after(() => syncAppointment(u.id));
-
-      // A freed slot: flag everyone waiting for that day, and tell the owner.
-      if (status === "cancelled" && existing.status === "confirmed" && existing.service_id) {
-        after(async () => {
-          try {
-            const n = await openWaitlistForSlot(
-              existing.business_id,
-              israelDateString(existing.start_time),
-              existing.start_time
-            );
-            await notifyBusiness(existing.business_id, {
-              title: isTeam ? "תור בוטל" : "לקוח ביטל תור",
-              body:
-                `${existing.client?.first_name ?? "לקוח"} · ${formatHebrewDate(existing.start_time)} ${formatTime(existing.start_time)}` +
-                (n > 0 ? ` · ${n} ממתינים ברשימת ההמתנה` : ""),
-              url: "/admin",
-            });
-          } catch (e) {
-            console.error("post-cancel tasks failed:", e);
-          }
-        });
-      }
     }
 
     return NextResponse.json({

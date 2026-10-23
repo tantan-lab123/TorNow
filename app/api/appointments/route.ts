@@ -27,6 +27,7 @@ import { forbidden, verifyGoogleAccessToken } from "@/lib/auth";
 import { getValidSession, requireRole, ANY_ROLE } from "@/lib/access";
 import { notifyBusiness } from "@/lib/push";
 import { syncAppointment } from "@/lib/google-sync";
+import { queueBookedSms, sendSmsInBackground } from "@/lib/sms/service";
 import { formatHebrewDate, formatTime } from "@/lib/utils";
 import { TZDate } from "@date-fns/tz";
 import {
@@ -274,6 +275,13 @@ export async function POST(request: NextRequest) {
 
     // Owner's Google Calendar (only when connected). Never blocks or fails the booking.
     after(() => syncAppointment(appointment.id));
+
+    // Confirmation SMS with the manage link (customers only). The queue row is written first,
+    // the send runs after the response. Never blocks or fails the booking.
+    if (!isTeam) {
+      const smsId = await queueBookedSms(appointment.id, phone);
+      if (smsId) after(() => sendSmsInBackground(smsId));
+    }
 
     // Free browser push to the owner's devices (does not delay the response)
     if (!isTeam) {
