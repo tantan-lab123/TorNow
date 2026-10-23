@@ -1,4 +1,4 @@
-import type { Appointment } from "@/lib/types";
+import type { Appointment, Business, BusinessSettings } from "@/lib/types";
 import {
   maskPhone,
   normalizeIsraeliMobile,
@@ -8,7 +8,9 @@ import {
   type SendResult,
 } from "@/lib/sms/019";
 import { generateManageToken, hashManageToken } from "@/lib/sms/manage-token";
-import { buildBookedMessage, buildManageUrl } from "@/lib/sms/template";
+import { buildManageUrl } from "@/lib/sms/template";
+import { countSegments, dateTimeVars, renderBookedMessageDetailed } from "@/lib/sms/message";
+import { SKIP_BUSINESS_DISABLED, getSmsTemplate, shouldSendSms } from "@/lib/sms/policy";
 
 /**
  * The SMS queue, same idea as the Google Calendar sync: a booking never waits for the
@@ -41,12 +43,16 @@ export interface FinishPatch {
   errorCode?: string | null;
   errorMessage?: string | null;
   shipmentId?: string | null;
+  /** SMS segments of the message that went out (usage counting). */
+  segments?: number | null;
 }
 
 export interface SmsRepo {
   /** null when this appointment already has a message of this kind (idempotent). */
   insert(row: {
     appointmentId: string;
+    /** Whose message this is (usage per business). */
+    businessId?: string | null;
     kind: SmsKind;
     toPhone: string;
     status: SmsStatus;
@@ -59,6 +65,8 @@ export interface SmsRepo {
   finish(id: string, patch: FinishPatch): Promise<void>;
   setToken(id: string, hash: string, expiresAtIso: string): Promise<void>;
   getAppointment(appointmentId: string): Promise<Appointment | null>;
+  /** The full business row. getAppointment embeds only a few business columns, not the settings. */
+  getBusiness(businessId: string): Promise<Business | null>;
 }
 
 export interface SmsEnv {
@@ -76,7 +84,12 @@ const minutes = (n: number) => n * 60_000;
  * unusable phone number is recorded as "skipped" with the reason, and the booking goes on.
  */
 export async function enqueueBookedSms(
-  input: { appointmentId: string; phone: string },
+  input: {
+    appointmentId: string;
+    phone: string;
+    /** The booked business, with its settings (the on/off switch). */
+    business?: { id: string; settings?: BusinessSettings } | null;
+  },
   repo: SmsRepo,
   ctx: SmsEnv = {}
 ): Promise<{ id: string; status: SmsStatus } | null> {
@@ -87,7 +100,11 @@ export async function enqueueBookedSms(
 
     let status: SmsStatus = "pending";
     let reason: string | undefined;
-    if (!cfg.ok) {
+    if (!shouldSendSms(input.business, "booked")) {
+      // the owner switched the confirmation off: nothing is sent, and the row says why
+      status = "skipped";
+      reason = SKIP_BUSINESS_DISABLED;
+    } else if (!cfg.ok) {
       status = "skipped";
       reason = cfg.reason;
     } else if (!phone.ok) {
@@ -100,6 +117,7 @@ export async function enqueueBookedSms(
 
     const row = await repo.insert({
       appointmentId: input.appointmentId,
+      businessId: input.business?.id ?? null,
       kind: "booked",
       toPhone: phone.ok ? phone.phone : input.phone.replace(/\D/g, "").slice(0, 20),
       status,
@@ -156,6 +174,14 @@ export async function processSmsRow(id: string, repo: SmsRepo, ctx: SmsEnv = {})
       return "skipped";
     }
 
+    // The owner may have switched the SMS off after the row was queued (also between retries).
+    // (The appointment only carries a few business columns; the settings need their own read.)
+    const business = await repo.getBusiness(appointment!.business_id);
+    if (!shouldSendSms(business, claimed.kind)) {
+      await repo.finish(id, { status: "skipped", errorCode: SKIP_BUSINESS_DISABLED, errorMessage: SKIP_BUSINESS_DISABLED });
+      return "skipped";
+    }
+
     const cfg = readSmsConfig(ctx.env);
     if (!cfg.ok) {
       await repo.finish(id, { status: "skipped", errorCode: cfg.reason, errorMessage: cfg.reason });
@@ -171,13 +197,18 @@ export async function processSmsRow(id: string, repo: SmsRepo, ctx: SmsEnv = {})
     }
     await repo.setToken(id, hashManageToken(token), appointment.end_time);
 
-    const message = buildBookedMessage({
-      firstName: appointment.client?.first_name,
-      businessName: appointment.business?.name,
-      serviceName: appointment.service?.name,
-      start: appointment.start_time,
-      manageUrl,
+    const rendered = renderBookedMessageDetailed(getSmsTemplate(business, claimed.kind), {
+      name: appointment.client?.first_name,
+      business: business?.name || appointment.business?.name || appointment.service?.name,
+      service: appointment.service?.name,
+      ...dateTimeVars(appointment.start_time),
+      link: manageUrl,
     });
+    if (rendered.fellBack) {
+      // the saved wording is unusable (old, edited by hand, ...): the default goes out; no customer data in the log
+      console.warn(`sms template not usable, default wording used (${rendered.fallbackReason})`);
+    }
+    const message = rendered.text;
 
     const result = await sendSms019(cfg.config, { id, phone: claimed.to_phone, message }, ctx.send);
 
@@ -185,6 +216,7 @@ export async function processSmsRow(id: string, repo: SmsRepo, ctx: SmsEnv = {})
       await repo.finish(id, {
         status: "sent",
         shipmentId: result.shipmentId ?? null,
+        segments: countSegments(message).segments,
         errorCode: null,
         errorMessage: null,
       });

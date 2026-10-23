@@ -198,7 +198,12 @@ export function toPublicBusiness(b: Business): Business {
   const { password, pin, google_id, owner_email, calendar_token, calendar_version, ...rest } = b;
   // the share-picture is a large inline image that only /api/og needs: keep it out of the public JSON
   const publicSettings = dropLegacyPrefills(rest.settings);
-  if (publicSettings) delete publicSettings.og_image_url;
+  if (publicSettings) {
+    delete publicSettings.og_image_url;
+    // the SMS switch and wording are the owner's business, not the booking page's
+    delete publicSettings.sms_confirmation_enabled;
+    delete publicSettings.sms_confirmation_template;
+  }
   return { ...rest, settings: publicSettings } as Business;
 }
 

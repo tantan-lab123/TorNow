@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
-import { getAppointmentById } from "@/lib/db";
+import { getAppointmentById, getBusinessById } from "@/lib/db";
+import { israelMonthStartIso } from "@/lib/sms/usage";
 import { isSupabaseConfigured, supabaseAdmin } from "./supabase";
 import type { FinishPatch, SmsKind, SmsOutboxRow, SmsRepo, SmsStatus } from "@/lib/sms/outbox";
 
@@ -8,6 +9,8 @@ import type { FinishPatch, SmsKind, SmsOutboxRow, SmsRepo, SmsStatus } from "@/l
 const COLUMNS = "id, appointment_id, kind, to_phone, status, attempts, next_attempt_at";
 
 interface MockRow extends SmsOutboxRow {
+  business_id: string | null;
+  segments: number | null;
   last_error_code: string | null;
   last_error_message: string | null;
   provider_shipment_id: string | null;
@@ -24,8 +27,19 @@ const mock = (globalThis.__SMS_OUTBOX__ ??= []);
 
 const adminClient = () => (isSupabaseConfigured && supabaseAdmin ? supabaseAdmin : null);
 
+/**
+ * business_id and segments came with a later migration. Until it has run, the database says the
+ * column is unknown (PostgREST: PGRST204, Postgres: 42703): then the write is repeated without
+ * them, so confirmations keep going out. A safety net, not the plan: run the migration first.
+ */
+export function isMissingColumnError(error: { code?: string; message?: string } | null | undefined): boolean {
+  if (!error) return false;
+  return error.code === "PGRST204" || error.code === "42703";
+}
+
 export async function insertSmsOutbox(row: {
   appointmentId: string;
+  businessId?: string | null;
   kind: SmsKind;
   toPhone: string;
   status: SmsStatus;
@@ -35,29 +49,35 @@ export async function insertSmsOutbox(row: {
   const nowIso = new Date().toISOString();
   const admin = adminClient();
   if (admin) {
-    const { data, error } = await admin
+    const base = {
+      appointment_id: row.appointmentId,
+      kind: row.kind,
+      to_phone: row.toPhone,
+      status: row.status,
+      next_attempt_at: nowIso,
+      last_error_code: row.errorCode ?? null,
+      last_error_message: row.errorMessage ?? null,
+    };
+    let res = await admin
       .from("sms_outbox")
-      .insert({
-        appointment_id: row.appointmentId,
-        kind: row.kind,
-        to_phone: row.toPhone,
-        status: row.status,
-        next_attempt_at: nowIso,
-        last_error_code: row.errorCode ?? null,
-        last_error_message: row.errorMessage ?? null,
-      })
+      .insert({ ...base, business_id: row.businessId ?? null })
       .select("id")
       .maybeSingle();
+    if (isMissingColumnError(res.error)) {
+      res = await admin.from("sms_outbox").insert(base).select("id").maybeSingle();
+    }
     // 23505 = unique_violation: this appointment already has a message of this kind
-    if (error?.code === "23505") return null;
-    if (error) throw error;
-    return data ? { id: data.id as string } : null;
+    if (res.error?.code === "23505") return null;
+    if (res.error) throw res.error;
+    return res.data ? { id: res.data.id as string } : null;
   }
   if (mock.some((r) => r.appointment_id === row.appointmentId && r.kind === row.kind)) return null;
   const id = randomUUID();
   mock.push({
     id,
     appointment_id: row.appointmentId,
+    business_id: row.businessId ?? null,
+    segments: null,
     kind: row.kind,
     to_phone: row.toPhone,
     status: row.status,
@@ -136,12 +156,19 @@ export async function finishSmsOutbox(id: string, patch: FinishPatch): Promise<v
   if (patch.shipmentId !== undefined) cols.provider_shipment_id = patch.shipmentId;
   const admin = adminClient();
   if (admin) {
-    const { error } = await admin.from("sms_outbox").update(cols).eq("id", id);
+    let { error } = await admin
+      .from("sms_outbox")
+      .update(patch.segments !== undefined ? { ...cols, segments: patch.segments } : cols)
+      .eq("id", id);
+    // the segments column may not exist yet (migration not run): the update is repeated without it
+    if (patch.segments !== undefined && isMissingColumnError(error)) {
+      ({ error } = await admin.from("sms_outbox").update(cols).eq("id", id));
+    }
     if (error) throw error;
     return;
   }
   const r = mock.find((x) => x.id === id);
-  if (r) Object.assign(r, cols);
+  if (r) Object.assign(r, cols, patch.segments !== undefined ? { segments: patch.segments } : {});
 }
 
 export async function setSmsManageToken(id: string, hash: string, expiresAtIso: string): Promise<void> {
@@ -229,6 +256,46 @@ export async function recordSmsDelivery(
   return true;
 }
 
+export interface SmsUsage {
+  /** Messages handed to the provider this month (status "sent"; skipped and failed ones don't count) */
+  sent: number;
+  /** Their SMS segments (rows from before the segments column count as 0) */
+  segments: number;
+  /** Start of the counted month (Israel time), ISO */
+  since: string;
+}
+
+/** This business's SMS usage from the start of the current Israeli calendar month. */
+export async function getSmsUsage(businessId: string, now: Date = new Date()): Promise<SmsUsage> {
+  const since = israelMonthStartIso(now);
+  const admin = adminClient();
+  if (admin) {
+    let sent = 0;
+    let segments = 0;
+    const PAGE = 1000;
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await admin
+        .from("sms_outbox")
+        .select("segments")
+        .eq("business_id", businessId)
+        .eq("status", "sent")
+        .gte("created_at", since)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      for (const r of (data ?? []) as { segments: number | null }[]) {
+        sent += 1;
+        segments += r.segments ?? 0;
+      }
+      if (!data || data.length < PAGE) break;
+    }
+    return { sent, segments, since };
+  }
+  const rows = mock.filter((r) => r.business_id === businessId && r.status === "sent");
+  return { sent: rows.length, segments: rows.reduce((n, r) => n + (r.segments ?? 0), 0), since };
+}
+
 export const smsRepo: SmsRepo = {
   insert: insertSmsOutbox,
   claim: claimSmsOutbox,
@@ -236,4 +303,5 @@ export const smsRepo: SmsRepo = {
   finish: finishSmsOutbox,
   setToken: setSmsManageToken,
   getAppointment: getAppointmentById,
+  getBusiness: getBusinessById,
 };

@@ -76,6 +76,10 @@ export interface BusinessSettings {
   show_hebrew_dates?: boolean; // toggle Hebrew calendar dates & Jewish holidays in client & admin views
   bit_payment_url?: string; // Bit payment link
   paybox_payment_url?: string; // PayBox payment link
+  /** Confirmation SMS to customers who book online. Missing = on. Owner/manager only, never in the public business JSON. */
+  sms_confirmation_enabled?: boolean;
+  /** Wording of that SMS (variables like {name}, {link}). Missing or empty = the system default. Never public. */
+  sms_confirmation_template?: string;
 }
 
 export interface Service {

@@ -1,4 +1,5 @@
 import type { BusinessSettings, DateOverride, DayOfWeek, WorkingHours } from "@/lib/types";
+import { checkWorstCaseLength, validateTemplate, type WorstCaseContext } from "@/lib/sms/message";
 
 const DAYS: DayOfWeek[] = [
   "sunday",
@@ -45,6 +46,59 @@ const bool = (v: unknown) => (typeof v === "boolean" ? v : undefined);
 export const CALENDAR_REMINDER_CHOICES = [0, 10, 15, 30, 60, 120, 180, 1440];
 export const DEFAULT_CALENDAR_REMINDER_MINUTES = 60;
 
+/** The settings of the "messages" screen. Only that screen (and the server, below) writes them. */
+export const SMS_SETTING_KEYS = ["sms_confirmation_enabled", "sms_confirmation_template"] as const;
+
+const hasKey = (raw: unknown, key: string) =>
+  !!raw && typeof raw === "object" && Object.prototype.hasOwnProperty.call(raw, key);
+
+/**
+ * Settings are saved as a whole: what arrives replaces what was stored. The other screens
+ * (general, controls, calendar) do not know the SMS settings and send none, so a key that is
+ * MISSING from the incoming settings keeps its stored value. A key that is present wins, even
+ * when empty or null (the way to go back to the default text); false is a real value.
+ */
+export function preserveMissingSmsSettings(
+  rawIncoming: unknown,
+  clean: BusinessSettings,
+  existing: BusinessSettings | undefined
+): BusinessSettings {
+  const out = { ...clean } as Record<string, unknown>;
+  for (const key of SMS_SETTING_KEYS) {
+    const stored = (existing as Record<string, unknown> | undefined)?.[key];
+    if (!hasKey(rawIncoming, key) && stored !== undefined) out[key] = stored;
+  }
+  return out as BusinessSettings;
+}
+
+/**
+ * Clear error text for the SMS settings in an incoming settings object, or null when they are fine.
+ * An empty / null template is fine (= the default wording). Called before saving; the sanitizer
+ * below also drops an unusable template, so a bad one can never be stored.
+ */
+export function smsSettingsError(rawSettings: unknown, ctx: WorstCaseContext): string | null {
+  if (hasKey(rawSettings, "sms_confirmation_enabled")) {
+    const v = (rawSettings as Record<string, unknown>).sms_confirmation_enabled;
+    if (v !== null && typeof v !== "boolean") return "ערך לא תקין למתג ה-SMS";
+  }
+  if (hasKey(rawSettings, "sms_confirmation_template")) {
+    const v = (rawSettings as Record<string, unknown>).sms_confirmation_template;
+    if (v === null || v === undefined) return null;
+    if (typeof v !== "string") return "נוסח ההודעה לא תקין";
+    if (v.trim() === "") return null;
+    const check = validateTemplate(v);
+    if (!check.ok) return check.error;
+    return checkWorstCaseLength(check.template, ctx);
+  }
+  return null;
+}
+
+function smsTemplate(v: unknown): string | undefined {
+  if (typeof v !== "string" || v.trim() === "") return undefined;
+  const check = validateTemplate(v);
+  return check.ok ? check.template : undefined;
+}
+
 export function sanitizeSettings(raw: unknown): BusinessSettings {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const out: BusinessSettings = {
@@ -72,6 +126,8 @@ export function sanitizeSettings(raw: unknown): BusinessSettings {
     post_booking_message: str(r.post_booking_message, 1000),
     bit_payment_url: safeHttpUrl(r.bit_payment_url),
     paybox_payment_url: safeHttpUrl(r.paybox_payment_url),
+    sms_confirmation_enabled: bool(r.sms_confirmation_enabled),
+    sms_confirmation_template: smsTemplate(r.sms_confirmation_template),
   };
   // drop undefined keys
   return Object.fromEntries(Object.entries(out).filter(([, v]) => v !== undefined)) as BusinessSettings;

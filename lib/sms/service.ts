@@ -1,5 +1,6 @@
 import { recordSmsDelivery, smsRepo } from "@/lib/db/sms";
 import { applyDlr, parseDlrDate, parseDlrStatus } from "@/lib/sms/dlr";
+import type { BusinessSettings } from "@/lib/types";
 import { enqueueBookedSms, processDueSms, processSmsRowSafely } from "@/lib/sms/outbox";
 
 /**
@@ -10,8 +11,12 @@ import { enqueueBookedSms, processDueSms, processSmsRowSafely } from "@/lib/sms/
  * Booking confirmation: writes the queue row (never throws) and returns its id, or null when
  * there is nothing to send. Call `sendSmsInBackground(id)` from `after()` afterwards.
  */
-export async function queueBookedSms(appointmentId: string, phone: string): Promise<string | null> {
-  const row = await enqueueBookedSms({ appointmentId, phone }, smsRepo);
+export async function queueBookedSms(
+  appointmentId: string,
+  phone: string,
+  business?: { id: string; settings?: BusinessSettings } | null
+): Promise<string | null> {
+  const row = await enqueueBookedSms({ appointmentId, phone, business }, smsRepo);
   return row && row.status === "pending" ? row.id : null;
 }
 
