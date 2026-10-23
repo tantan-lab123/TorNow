@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  formFieldsFromClient,
+  formatLocalPhone,
   isPlaceholderClient,
   lastVisitByClient,
   normalizePhoneDigits,
+  samePhone,
   searchClients,
 } from "@/lib/client-search";
 import type { Client } from "@/lib/types";
@@ -64,6 +67,10 @@ describe("searchClients by name", () => {
     expect(ids(searchClients(list, "JOHN oneil"))).toEqual(["9"]);
     expect(ids(searchClients(list, "בן-דוד"))).toEqual(["10"]);
   });
+  it("ignores niqqud in the saved name", () => {
+    const withNiqqud = c("n", "ד" + String.fromCharCode(0x05b8) + "נ" + String.fromCharCode(0x05b8) + "ה", "לוי", "0503333333");
+    expect(ids(searchClients([withNiqqud], "דנה"))).toEqual(["n"]);
+  });
   it("returns nothing for an unknown name", () => {
     expect(searchClients(all, "אברהם")).toEqual([]);
   });
@@ -111,5 +118,43 @@ describe("ordering", () => {
     ]);
     expect(m.get("1")).toBe("2026-10-09T10:00:00Z");
     expect(m.has("2")).toBe(false);
+  });
+});
+
+describe("filling the booking form from the picked customer", () => {
+  const picked = (phone: string) => c("9", "דנה", "כהן", phone);
+
+  it.each([
+    ["050-1234567", "050-1234567"],
+    ["0501234567", "050-1234567"],
+    ["+972501234567", "050-1234567"],
+    ["972501234567", "050-1234567"],
+    ["+972-50-123-4567", "050-1234567"],
+    ["00972501234567", "050-1234567"],
+    ["052 765 4321", "052-7654321"],
+  ])("a phone saved as %s fills the form as %s", (saved, shown) => {
+    expect(formFieldsFromClient(picked(saved))).toEqual({ firstName: "דנה", lastName: "כהן", phone: shown });
+  });
+
+  it("the filled phone is a valid 10-digit number for the booking", () => {
+    for (const saved of ["050-1234567", "+972501234567"]) {
+      const digits = formFieldsFromClient(picked(saved)).phone.replace(/\D/g, "");
+      expect(digits).toBe("0501234567");
+    }
+  });
+
+  it("formatLocalPhone never keeps dashes or a country code", () => {
+    expect(formatLocalPhone("+972501234567")).toBe("050-1234567");
+    expect(formatLocalPhone("050-12")).toBe("050-12");
+    expect(formatLocalPhone("05")).toBe("05");
+    expect(formatLocalPhone("")).toBe("");
+  });
+
+  it("samePhone recognises one number in every format, and different numbers", () => {
+    expect(samePhone("0501234567", "050-1234567")).toBe(true);
+    expect(samePhone("0501234567", "+972501234567")).toBe(true);
+    expect(samePhone("050-1234567", "972501234567")).toBe(true);
+    expect(samePhone("0501234567", "0501234568")).toBe(false);
+    expect(samePhone("050123", "0501234567")).toBe(false); // half-typed: another customer
   });
 });

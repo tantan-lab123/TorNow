@@ -90,3 +90,23 @@ export function lastVisitByClient(
   }
   return map;
 }
+
+/** Local form of a phone for the booking form: "050-1234567" (digits only, +972 / 972 become 0). */
+export function formatLocalPhone(raw: string): string {
+  const digits = normalizePhoneDigits(raw).slice(0, 10);
+  return digits.length > 3 ? `${digits.slice(0, 3)}-${digits.slice(3)}` : digits;
+}
+
+/** Same number, whatever the format ("050-1234567", "0501234567", "+972501234567"). */
+export function samePhone(a: string, b: string): boolean {
+  return normalizePhoneDigits(a) === normalizePhoneDigits(b);
+}
+
+/** What the manual-booking form is filled with when a customer is picked. */
+export function formFieldsFromClient(c: Pick<Client, "first_name" | "last_name" | "phone">): {
+  firstName: string;
+  lastName: string;
+  phone: string;
+} {
+  return { firstName: c.first_name, lastName: c.last_name, phone: formatLocalPhone(c.phone) };
+}

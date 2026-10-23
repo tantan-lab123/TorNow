@@ -92,7 +92,7 @@ import { ServicesSection } from "@/components/admin/ServicesSection";
 import { alertDialog, confirmDialog } from "@/lib/dialogs";
 import { SettingsSection } from "@/components/admin/SettingsSection";
 import { ClientPicker } from "@/components/admin/ClientPicker";
-import { lastVisitByClient } from "@/lib/client-search";
+import { formFieldsFromClient, lastVisitByClient, samePhone } from "@/lib/client-search";
 import {
   DEFAULT_EMPLOYEES,
   DEFAULT_PRODUCTS,
@@ -2688,11 +2688,11 @@ export default function AdminDashboardPage() {
             lastVisit={lastVisit}
             selected={walkinClient}
             onSelect={(c) => {
-              const digits = c.phone.replace(/D/g, "").slice(0, 10);
+              const fields = formFieldsFromClient(c);
               setWalkinClient(c);
-              setWalkinFirstName(c.first_name);
-              setWalkinLastName(c.last_name);
-              setWalkinPhone(digits.length > 3 ? `${digits.slice(0, 3)}-${digits.slice(3)}` : digits);
+              setWalkinFirstName(fields.firstName);
+              setWalkinLastName(fields.lastName);
+              setWalkinPhone(fields.phone);
             }}
             onClear={() => {
               setWalkinClient(null);
@@ -2734,7 +2734,7 @@ export default function AdminDashboardPage() {
               }
               setWalkinPhone(formatted);
               // a different number is a different customer: the chosen one no longer applies
-              if (walkinClient && digits !== walkinClient.phone.replace(/D/g, "")) setWalkinClient(null);
+              if (walkinClient && !samePhone(digits, walkinClient.phone)) setWalkinClient(null);
             }}
             helperText={
               walkinPhone.replace(/\D/g, "").length === 10
