@@ -7,6 +7,13 @@ const securityHeaders = [
   // Content-Security-Policy is set per request (with a nonce) in proxy.ts
 ];
 
+// The SMS manage link carries a secret: never indexed, never cached, never sent on in the Referer header.
+const privateLinkHeaders = [
+  { key: "Referrer-Policy", value: "no-referrer" },
+  { key: "Cache-Control", value: "no-store" },
+  { key: "X-Robots-Tag", value: "noindex, nofollow" },
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
@@ -23,7 +30,11 @@ const nextConfig = {
     ];
   },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      { source: "/t/:path*", headers: privateLinkHeaders },
+      { source: "/api/manage/:path*", headers: privateLinkHeaders },
+    ];
   },
 };
 

@@ -1522,6 +1522,7 @@ export default function BookingPage() {
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 pt-1">{changePolicy}</p>
+                <p className="text-xs text-slate-500">תקבל/י SMS אישור עם קישור לניהול התור.</p>
               </Card>
 
               <StickyFooter>
