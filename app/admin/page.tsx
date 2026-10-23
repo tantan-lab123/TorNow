@@ -12,7 +12,6 @@ import {
   ChevronLeft,
   CalendarDays,
   Trash2,
-  Send,
   RefreshCw,
   Sparkles,
   AlertCircle,
@@ -35,7 +34,6 @@ import {
   DateOverride,
   Employee,
   Product,
-  MarketingMessage,
   Client,
   WorkingHours,
   DayHours,
@@ -73,7 +71,8 @@ import {
   parseISO,
 } from "date-fns";
 import { he } from "date-fns/locale";
-import { AdminTopBar, AdminTab, HIDDEN_TABS } from "@/components/admin/AdminTopBar";
+import { AdminTopBar } from "@/components/admin/AdminTopBar";
+import { resolveActiveTab, type AdminTab } from "@/lib/admin-nav";
 import { NextUpTicket } from "@/components/admin/NextUpTicket";
 import { Logo } from "@/components/brand/Logo";
 import { AdminFAB } from "@/components/admin/AdminFAB";
@@ -85,7 +84,7 @@ import { GoogleSyncBanner } from "@/components/admin/GoogleSyncBanner";
 import { clearConnectingFlag, finishGoogleCalendarConnect, isConnectingCalendar } from "@/lib/google-calendar-client";
 import { MonthTable } from "@/components/admin/MonthTable";
 import { ProductsSection } from "@/components/admin/ProductsSection";
-import { MarketingSection } from "@/components/admin/MarketingSection";
+import { MessagesSection } from "@/components/admin/MessagesSection";
 import { CashRegisterSection } from "@/components/admin/CashRegisterSection";
 import { WorkScheduleSection } from "@/components/admin/WorkScheduleSection";
 import { ServicesSection } from "@/components/admin/ServicesSection";
@@ -93,11 +92,7 @@ import { alertDialog, confirmDialog } from "@/lib/dialogs";
 import { SettingsSection } from "@/components/admin/SettingsSection";
 import { ClientPicker } from "@/components/admin/ClientPicker";
 import { formFieldsFromClient, lastVisitByClient, samePhone } from "@/lib/client-search";
-import {
-  DEFAULT_EMPLOYEES,
-  DEFAULT_PRODUCTS,
-  DEFAULT_MARKETING_MESSAGES,
-} from "@/lib/mock-saas";
+import { DEFAULT_EMPLOYEES, DEFAULT_PRODUCTS } from "@/lib/mock-saas";
 
 const ADMIN_SESSION_KEY = "schedule_active_business_slug_v2";
 
@@ -178,7 +173,6 @@ export default function AdminDashboardPage() {
   const [forgotMsg, setForgotMsg] = useState("");
   const [forgotBusy, setForgotBusy] = useState(false);
   const [products, setProducts] = useState<Product[]>(DEFAULT_PRODUCTS.default);
-  const [marketingMessages, setMarketingMessages] = useState<MarketingMessage[]>(DEFAULT_MARKETING_MESSAGES);
   const [customClients, setCustomClients] = useState<Client[]>([]);
   const [savedClients, setSavedClients] = useState<Client[]>([]);
 
@@ -293,8 +287,6 @@ export default function AdminDashboardPage() {
   // Modals state
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [isBlockTimeOpen, setIsBlockTimeOpen] = useState(false);
-  const [isReminderRunning, setIsReminderRunning] = useState(false);
-  const [reminderResult, setReminderResult] = useState<Record<string, unknown> | null>(null);
 
   // Quick Add / Walk-in form
   const [walkinServiceId, setWalkinServiceId] = useState("");
@@ -783,14 +775,7 @@ export default function AdminDashboardPage() {
   }, [selectedBusiness?.id, loadEmployees]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // A role may not sit on a tab it cannot use (e.g. after switching accounts): it gets the calendar
-  const allowedTabs: string[] | null =
-    role === "staff"
-      ? ["calendar", "customers"]
-      : role === "manager"
-      ? ["calendar", "stats", "customers", "services", "workschedule", "marketing", "cashregister", "settings"]
-      : null;
-  const activeTab: AdminTab =
-    (allowedTabs && !allowedTabs.includes(requestedTab)) || HIDDEN_TABS.includes(requestedTab) ? "calendar" : requestedTab;
+  const activeTab: AdminTab = resolveActiveTab(role, requestedTab);
 
   // Appointments for the selected day
   const dailyAppointments = useMemo(() => {
@@ -1158,23 +1143,27 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Test WhatsApp Reminder Cron Trigger
-  const handleTriggerReminderCron = async () => {
-    setIsReminderRunning(true);
-    setReminderResult(null);
-    triggerHaptic(30);
-
-    try {
-      const res = await fetch("/api/cron/reminders", { method: "POST" });
-      const data = await res.json();
-      setReminderResult(data);
-      fetchAppointments();
-    } catch (err) {
-      console.error(err);
-      await alertDialog("שגיאה בהפעלת מנגנון התזכורות");
-    } finally {
-      setIsReminderRunning(false);
+  // Saves business settings (used by Settings and Messages). Throws when the save fails, so the
+  // screen that asked can show the reason.
+  const handleUpdateSettings = async (updates: Partial<Business> & { rotate_calendar_link?: boolean }) => {
+    if (!selectedBusiness) return;
+    if (updates.slot_interval_minutes) {
+      setEditingInterval(updates.slot_interval_minutes);
     }
+    const res = await fetch("/api/business", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: selectedBusiness.id,
+        ...updates,
+      }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || "לא הצלחנו לשמור את ההגדרות. נסו שוב.");
+    }
+    const updated = await res.json();
+    setSelectedBusiness(updated);
   };
 
   if (isLoading) {
@@ -2558,52 +2547,11 @@ export default function AdminDashboardPage() {
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 7: MARKETING & MESSAGES */}
+        {/* TAB 7: MESSAGES (confirmation SMS settings; owner and manager only) */}
         {/* ========================================================================= */}
-        {activeTab === "marketing" && (
-          <div className="animate-in fade-in duration-200 space-y-4">
-            <MarketingSection
-              messages={marketingMessages}
-              clients={clients}
-              businessName={selectedBusiness.name}
-              businessSlug={selectedBusiness.slug}
-              onSendMessage={(newMsg) => {
-                setMarketingMessages((prev) => [newMsg, ...prev]);
-              }}
-            />
-
-            {/* Cron Reminders Tester Card */}
-            <Card className="p-5 space-y-3 text-right">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center flex-shrink-0">
-                  <Send className="w-5 h-5" />
-                </div>
-                <div className="text-right flex-1">
-                  <h4 className="font-bold text-sm text-slate-900">
-                    בדיקת מנגנון תזכורות אוטומטיות (Cron Worker)
-                  </h4>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    מדמה הרצת ה-Worker של ה-Cron (סורק תורים בטווח 24-25 שעות, שולח הודעות ומעדכן reminder_sent).
-                  </p>
-                </div>
-              </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleTriggerReminderCron}
-                isLoading={isReminderRunning}
-                className="w-full text-xs font-bold border-indigo-200 text-indigo-700 bg-white hover:bg-indigo-50"
-              >
-                <span>הפעל בדיקת תזכורות עכשיו (/api/cron/reminders)</span>
-              </Button>
-
-              {reminderResult && (
-                <div className="p-3 bg-slate-900 text-slate-100 rounded-xl text-xs font-mono overflow-x-auto text-left ltr">
-                  <pre>{JSON.stringify(reminderResult, null, 2)}</pre>
-                </div>
-              )}
-            </Card>
+        {activeTab === "messages" && (
+          <div className="animate-in fade-in duration-200">
+            <MessagesSection business={selectedBusiness} onUpdateSettings={handleUpdateSettings} />
           </div>
         )}
 
@@ -2627,26 +2575,7 @@ export default function AdminDashboardPage() {
             <SettingsSection
               business={selectedBusiness}
               slotInterval={editingInterval}
-              onUpdateSettings={async (updates) => {
-                if (!selectedBusiness) return;
-                if (updates.slot_interval_minutes) {
-                  setEditingInterval(updates.slot_interval_minutes);
-                }
-                const res = await fetch("/api/business", {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    id: selectedBusiness.id,
-                    ...updates,
-                  }),
-                });
-                if (!res.ok) {
-                  const data = await res.json().catch(() => ({}));
-                  throw new Error(data.error || "לא הצלחנו לשמור את ההגדרות. נסו שוב.");
-                }
-                const updated = await res.json();
-                setSelectedBusiness(updated);
-              }}
+              onUpdateSettings={handleUpdateSettings}
               onDeleteBusiness={role === "owner" ? handleDeleteBusiness : undefined}
               role={role}
             />

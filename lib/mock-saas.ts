@@ -1,4 +1,4 @@
-import { Employee, Product, MarketingMessage, AttendanceRecord } from "./types";
+import { Employee, Product, AttendanceRecord } from "./types";
 
 export const DEFAULT_EMPLOYEES: Record<string, Employee[]> = {
   default: [
@@ -80,27 +80,6 @@ export const DEFAULT_PRODUCTS: Record<string, Product[]> = {
     },
   ],
 };
-
-export const DEFAULT_MARKETING_MESSAGES: MarketingMessage[] = [
-  {
-    id: "msg-1",
-    business_id: "biz-1",
-    recipient_count: 142,
-    channel: "sms",
-    content: "שנה טובה וחג שמח מכל צוות המספרה! 🍎🍯 מזמינים אתכם להבטיח תור לתספורת לחג בלינק: tornow.app/barber-dan",
-    sent_at: "2026-09-08 11:30",
-    status: "delivered",
-  },
-  {
-    id: "msg-2",
-    business_id: "biz-1",
-    recipient_count: 88,
-    channel: "whatsapp",
-    content: "היי חברים, שריינו תור מראש לסופ\"ש הקרוב דרך היומן החכם שלנו וקבלו 10% הנחה על מוצרי הטיפוח!",
-    sent_at: "2026-09-01 16:45",
-    status: "delivered",
-  },
-];
 
 export const DEFAULT_ATTENDANCE: AttendanceRecord[] = [
   {

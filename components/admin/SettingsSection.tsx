@@ -9,7 +9,6 @@ import {
   Printer,
   Copy,
   Calendar,
-  MessageSquare,
   ExternalLink,
   Upload,
   Image as ImageIcon,
@@ -24,7 +23,6 @@ import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { BackupAndAlerts } from "@/components/admin/BackupAndAlerts";
 import { GoogleCalendarCard } from "@/components/admin/GoogleCalendarCard";
-import { SmsSettingsTab } from "@/components/admin/SmsSettingsTab";
 import { triggerHaptic } from "@/lib/utils";
 import { alertDialog, confirmDialog } from "@/lib/dialogs";
 import { qrDataUrl } from "@/lib/qr";
@@ -117,9 +115,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
   onDeleteBusiness,
   role = "owner",
 }) => {
-  const [subTab, setSubTab] = useState<"general" | "controls" | "qrcode" | "sync" | "messages">("general");
-  // owner and managers (the server checks the role as well)
-  const canEditMessages = role === "owner" || role === "manager";
+  const [subTab, setSubTab] = useState<"general" | "controls" | "qrcode" | "sync">("general");
   const [copiedSyncUrl, setCopiedSyncUrl] = useState(false);
   // iPhone / iPad: offer Apple's calendar next to Google's (detected after mount to avoid a hydration mismatch)
   const isApple = React.useSyncExternalStore(
@@ -392,18 +388,6 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
           <Calendar className="w-4 h-4" />
           <span>סנכרון ליומן Google</span>
         </button>
-
-        {canEditMessages && (
-          <button
-            onClick={() => setSubTab("messages")}
-            className={`flex-1 min-w-[100px] min-h-[44px] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
-              subTab === "messages" ? "bg-white text-indigo-600 shadow-xs" : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            <MessageSquare className="w-4 h-4" />
-            <span>הודעות</span>
-          </button>
-        )}
       </div>
 
       <form onSubmit={handleSaveAll} className="space-y-4 text-right">
@@ -1184,11 +1168,6 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
           );
         })()}
       </form>
-
-      {/* TAB 5: CONFIRMATION SMS (its own save button, so outside the form above) */}
-      {subTab === "messages" && canEditMessages && (
-        <SmsSettingsTab business={business} onUpdateSettings={onUpdateSettings} />
-      )}
 
       <BackupAndAlerts />
 
