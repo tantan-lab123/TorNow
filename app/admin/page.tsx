@@ -91,6 +91,8 @@ import { WorkScheduleSection } from "@/components/admin/WorkScheduleSection";
 import { ServicesSection } from "@/components/admin/ServicesSection";
 import { alertDialog, confirmDialog } from "@/lib/dialogs";
 import { SettingsSection } from "@/components/admin/SettingsSection";
+import { ClientPicker } from "@/components/admin/ClientPicker";
+import { lastVisitByClient } from "@/lib/client-search";
 import {
   DEFAULT_EMPLOYEES,
   DEFAULT_PRODUCTS,
@@ -210,6 +212,8 @@ export default function AdminDashboardPage() {
     return Array.from(map.values());
   }, [appointments, customClients, savedClients, selectedBusiness]);
 
+  const lastVisit = useMemo(() => lastVisitByClient(appointments), [appointments]);
+
   const loadSavedClients = useCallback(async () => {
     try {
       const res = await fetch("/api/clients");
@@ -297,6 +301,8 @@ export default function AdminDashboardPage() {
   const [walkinFirstName, setWalkinFirstName] = useState("");
   const [walkinLastName, setWalkinLastName] = useState("");
   const [walkinPhone, setWalkinPhone] = useState("");
+  // an existing customer picked in the manual-booking form (null = new / walk-in customer)
+  const [walkinClient, setWalkinClient] = useState<Client | null>(null);
   const [walkinTime, setWalkinTime] = useState("10:00");
   const [isSubmittingWalkin, setIsSubmittingWalkin] = useState(false);
 
@@ -1098,6 +1104,7 @@ export default function AdminDashboardPage() {
         setWalkinFirstName("");
         setWalkinLastName("");
         setWalkinPhone("");
+        setWalkinClient(null);
         fetchAppointments();
       } else {
         const data = await res.json();
@@ -2676,6 +2683,25 @@ export default function AdminDashboardPage() {
             </select>
           </div>
 
+          <ClientPicker
+            clients={clients}
+            lastVisit={lastVisit}
+            selected={walkinClient}
+            onSelect={(c) => {
+              const digits = c.phone.replace(/D/g, "").slice(0, 10);
+              setWalkinClient(c);
+              setWalkinFirstName(c.first_name);
+              setWalkinLastName(c.last_name);
+              setWalkinPhone(digits.length > 3 ? `${digits.slice(0, 3)}-${digits.slice(3)}` : digits);
+            }}
+            onClear={() => {
+              setWalkinClient(null);
+              setWalkinFirstName("");
+              setWalkinLastName("");
+              setWalkinPhone("");
+            }}
+          />
+
           <div className="grid grid-cols-2 gap-3">
             <Input
               label="שם פרטי *"
@@ -2707,6 +2733,8 @@ export default function AdminDashboardPage() {
                 formatted = `${digits.slice(0, 3)}-${digits.slice(3)}`;
               }
               setWalkinPhone(formatted);
+              // a different number is a different customer: the chosen one no longer applies
+              if (walkinClient && digits !== walkinClient.phone.replace(/D/g, "")) setWalkinClient(null);
             }}
             helperText={
               walkinPhone.replace(/\D/g, "").length === 10
