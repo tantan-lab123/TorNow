@@ -279,7 +279,7 @@ export async function POST(request: NextRequest) {
     // Confirmation SMS with the manage link (customers only). The queue row is written first,
     // the send runs after the response. Never blocks or fails the booking.
     if (!isTeam) {
-      const smsId = await queueBookedSms(appointment.id, phone);
+      const smsId = await queueBookedSms(appointment.id, phone, business);
       if (smsId) after(() => sendSmsInBackground(smsId));
     }
 

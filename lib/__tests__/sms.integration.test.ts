@@ -115,4 +115,42 @@ describe("sms confirmation, end to end (in-memory db + fake 019)", () => {
     expect(await handleDeliveryReport({ externalId: "not-an-id", status: "0", date: "" })).toBe("ignored");
     expect(await handleDeliveryReport({ externalId: q!.id, status: "junk", date: "" })).toBe("ignored");
   });
+
+  it("a custom wording and the on/off switch of the business, with usage counted per business", async () => {
+    const db = await import("@/lib/db");
+    const { smsRepo, getSmsUsage } = await import("@/lib/db/sms");
+    const { enqueueBookedSms, processSmsRow } = await import("@/lib/sms/outbox");
+
+    const business = (await db.getBusinessById(BIZ))!;
+    const usageBefore = await getSmsUsage(BIZ);
+
+    // 1) the owner saved their own wording
+    await db.updateBusiness(BIZ, {
+      settings: { ...business.settings, sms_confirmation_template: "היי {name}, ב-{date} ב-{time} ל{service}. {link}" },
+    });
+    const withTemplate = (await db.getBusinessById(BIZ))!;
+    const appt = await bookAppointment();
+    const q = await enqueueBookedSms(
+      { appointmentId: appt.id, phone: "0501234567", business: withTemplate },
+      smsRepo,
+      { env: ENV }
+    );
+    const fetchImpl = reply({ status: 0, shipment_id: "S-1" });
+    expect(await processSmsRow(q!.id, smsRepo, { env: ENV, send: { fetchImpl: fetchImpl as unknown as typeof fetch } })).toBe("sent");
+    const message: string = JSON.parse(fetchImpl.mock.calls[0][1].body).sms.message;
+    expect(message).toMatch(/^היי (?:דנה|יוסי), ב-\d\d\/\d\d ב-\d\d:\d\d ל.+\. https:\/\/tornow\.example\/t\/[A-Za-z0-9_-]{32}$/);
+
+    // 2) it counts for this business
+    const usageAfter = await getSmsUsage(BIZ);
+    expect(usageAfter.sent - usageBefore.sent).toBe(1);
+    expect(usageAfter.segments - usageBefore.segments).toBeGreaterThanOrEqual(1);
+
+    // 3) the owner switches the SMS off: the next booking is skipped, nothing is sent, nothing is counted
+    await db.updateBusiness(BIZ, { settings: { ...withTemplate.settings, sms_confirmation_enabled: false } });
+    const off = (await db.getBusinessById(BIZ))!;
+    const appt2 = await bookAppointment();
+    const skipped = await enqueueBookedSms({ appointmentId: appt2.id, phone: "0501234567", business: off }, smsRepo, { env: ENV });
+    expect(skipped?.status).toBe("skipped");
+    expect((await getSmsUsage(BIZ)).sent).toBe(usageAfter.sent);
+  });
 });

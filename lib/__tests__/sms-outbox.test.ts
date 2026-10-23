@@ -11,7 +11,7 @@ import {
   type SmsOutboxRow,
   type SmsRepo,
 } from "@/lib/sms/outbox";
-import type { Appointment } from "@/lib/types";
+import type { Appointment, Business, BusinessSettings } from "@/lib/types";
 
 const NOW = new Date("2026-11-01T08:00:00Z");
 const ENV = {
@@ -38,8 +38,16 @@ function appt(over: Partial<Appointment> = {}): Appointment {
 }
 
 /** In-memory repo with the same contract as the database one (atomic claim, unique kind). */
-function fakeRepo(appointment: Appointment | null = appt()) {
-  const rows = new Map<string, SmsOutboxRow & { error?: string | null; shipment?: string | null }>();
+const BIZ_ID = "biz";
+function biz(settings?: BusinessSettings): Business {
+  return { id: BIZ_ID, name: "סלון נועה", settings } as unknown as Business;
+}
+
+function fakeRepo(appointment: Appointment | null = appt(), business: Business | null = biz()) {
+  const rows = new Map<
+    string,
+    SmsOutboxRow & { error?: string | null; shipment?: string | null; business_id?: string | null; segments?: number | null }
+  >();
   const tokens: { id: string; hash: string; expires: string }[] = [];
   let seq = 0;
   const repo: SmsRepo = {
@@ -49,6 +57,7 @@ function fakeRepo(appointment: Appointment | null = appt()) {
       rows.set(id, {
         id,
         appointment_id: r.appointmentId,
+        business_id: r.businessId ?? null,
         kind: r.kind,
         to_phone: r.toPhone,
         status: r.status,
@@ -77,12 +86,16 @@ function fakeRepo(appointment: Appointment | null = appt()) {
       if (patch.nextAttemptAt) r.next_attempt_at = patch.nextAttemptAt;
       if (patch.errorCode !== undefined) r.error = patch.errorCode;
       if (patch.shipmentId !== undefined) r.shipment = patch.shipmentId;
+      if (patch.segments !== undefined) r.segments = patch.segments;
     },
     async setToken(id, hash, expires) {
       tokens.push({ id, hash, expires });
     },
     async getAppointment() {
       return appointment;
+    },
+    async getBusiness() {
+      return business;
     },
   };
   return { repo, rows, tokens };
@@ -149,8 +162,10 @@ describe("processSmsRow state transitions", () => {
     expect(rows.get(q!.id)).toMatchObject({ status: "sent", shipment: "S1", attempts: 1 });
     const body = JSON.parse(fetchImpl.mock.calls[0][1].body);
     expect(body.sms.destinations.phone[0]).toEqual({ $: { id: q!.id }, _: "501234567" });
-    expect(body.sms.message).toMatch(/^שלום דנה, נקבע לך תור לסלון נועה בתאריך 05\/11 בשעה 15:30\./);
-    const link = body.sms.message.split("\n").pop() as string;
+    // the default wording: the business has no template of its own
+    expect(body.sms.message).toMatch(/^נקבע לך תור לסלון נועה ב-05\/11 בשעה 15:30\.\nלשינוי\/ביטול: https:\/\/tornow\.example\/t\//);
+    expect(rows.get(q!.id)!.segments).toBe(2);
+    const link = (body.sms.message.match(/https:\/\/\S+$/) as RegExpMatchArray)[0];
     expect(link).toMatch(/^https:\/\/tornow\.example\/t\/[A-Za-z0-9_-]{32}$/);
     // only the hash of that token is stored, valid until the end of the appointment
     expect(tokens).toHaveLength(1);
@@ -252,5 +267,95 @@ describe("planAfterFailure / processDueSms", () => {
     expect(res).toMatchObject({ processed: 1, sent: 1 });
     expect(rows.get(a!.id)!.status).toBe("sent");
     expect(rows.get(b!.id)!.status).toBe("pending");
+  });
+});
+
+describe("the business's own settings", () => {
+  const sentMessage = (fetchImpl: ReturnType<typeof vi.fn>) =>
+    JSON.parse(fetchImpl.mock.calls[0][1].body).sms.message as string;
+
+  it("the enqueue remembers the business (usage per business)", async () => {
+    const { repo, rows } = fakeRepo();
+    await enqueueBookedSms({ appointmentId: "appt-1", phone: "0501234567", business: biz() }, repo, { env: ENV });
+    expect([...rows.values()][0].business_id).toBe(BIZ_ID);
+  });
+
+  it("switched off at enqueue time: a skipped row with the reason, nothing is sent", async () => {
+    const { repo, rows } = fakeRepo();
+    const off = biz({ sms_confirmation_enabled: false });
+    const r = await enqueueBookedSms({ appointmentId: "appt-1", phone: "0501234567", business: off }, repo, { env: ENV });
+    expect(r?.status).toBe("skipped");
+    expect([...rows.values()][0]).toMatchObject({ status: "skipped", error: "business_disabled", business_id: BIZ_ID });
+  });
+
+  it("a missing switch means send", async () => {
+    const { repo } = fakeRepo();
+    const r = await enqueueBookedSms({ appointmentId: "appt-1", phone: "0501234567", business: biz({}) }, repo, { env: ENV });
+    expect(r?.status).toBe("pending");
+  });
+
+  it("switched off between the enqueue and a retry: the retry sends nothing", async () => {
+    // the owner's settings are read again before every attempt
+    let current = biz();
+    const { repo, rows } = fakeRepo();
+    repo.getBusiness = async () => current;
+    const q = await enqueueBookedSms({ appointmentId: "appt-1", phone: "0501234567", business: current }, repo, { env: ENV });
+    const failing = providerError(4);
+    expect(await processSmsRow(q!.id, repo, ctx(failing))).toBe("retry");
+    expect(failing).toHaveBeenCalledTimes(1);
+
+    current = biz({ sms_confirmation_enabled: false }); // the owner switches it off
+    const due = new Date(rows.get(q!.id)!.next_attempt_at);
+    const second = ok();
+    expect(await processSmsRow(q!.id, repo, ctx(second, due))).toBe("skipped");
+    expect(second).not.toHaveBeenCalled();
+    expect(rows.get(q!.id)).toMatchObject({ status: "skipped", error: "business_disabled" });
+  });
+
+  it("uses the settings from the business row, not the appointment's embedded business (which has no settings)", async () => {
+    const { repo } = fakeRepo(appt({ business: { name: "x" } as Appointment["business"] }), biz({ sms_confirmation_enabled: false }));
+    const q = await enqueueBookedSms({ appointmentId: "appt-1", phone: "0501234567", business: biz() }, repo, { env: ENV });
+    const fetchImpl = ok();
+    expect(await processSmsRow(q!.id, repo, ctx(fetchImpl))).toBe("skipped");
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("sends the business's own wording", async () => {
+    const { repo } = fakeRepo(appt(), biz({ sms_confirmation_template: "שלום {name}, תור ב-{date} ב-{time} ל{service}. {link}" }));
+    const q = await enqueueBookedSms({ appointmentId: "appt-1", phone: "0501234567", business: biz() }, repo, { env: ENV });
+    const fetchImpl = ok();
+    expect(await processSmsRow(q!.id, repo, ctx(fetchImpl))).toBe("sent");
+    expect(sentMessage(fetchImpl)).toMatch(/^שלום דנה, תור ב-05\/11 ב-15:30 לתספורת\. https:\/\/tornow\.example\/t\/[A-Za-z0-9_-]{32}$/);
+  });
+
+  it("a wording without {link} still gets the manage link at the end", async () => {
+    const { repo } = fakeRepo(appt(), biz({ sms_confirmation_template: "תור ב-{date}" }));
+    const q = await enqueueBookedSms({ appointmentId: "appt-1", phone: "0501234567", business: biz() }, repo, { env: ENV });
+    const fetchImpl = ok();
+    await processSmsRow(q!.id, repo, ctx(fetchImpl));
+    expect(sentMessage(fetchImpl)).toMatch(/^תור ב-05\/11\nhttps:\/\/tornow\.example\/t\/[A-Za-z0-9_-]{32}$/);
+  });
+
+  it("a broken saved wording never fails the message: the default goes out, the warning has no customer data", async () => {
+    const { repo, rows } = fakeRepo(appt(), biz({ sms_confirmation_template: "מבצע https://evil.test {link}" }));
+    const q = await enqueueBookedSms({ appointmentId: "appt-1", phone: "0501234567", business: biz() }, repo, { env: ENV });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const fetchImpl = ok();
+    expect(await processSmsRow(q!.id, repo, ctx(fetchImpl))).toBe("sent");
+    expect(sentMessage(fetchImpl)).toMatch(/^נקבע לך תור לסלון נועה ב-05\/11 בשעה 15:30\./);
+    expect(sentMessage(fetchImpl)).not.toContain("evil");
+    const logged = warn.mock.calls.map((c) => String(c[0])).join("\n");
+    warn.mockRestore();
+    expect(logged).toContain("default wording used");
+    expect(logged).not.toMatch(/דנה|0501234567|501234567|tornow\.example\/t\//);
+    expect(rows.get(q!.id)!.status).toBe("sent");
+  });
+
+  it("records the segments of the message that went out", async () => {
+    const { repo, rows } = fakeRepo(appt(), biz({ sms_confirmation_template: "א".repeat(150) + " {link}" }));
+    const q = await enqueueBookedSms({ appointmentId: "appt-1", phone: "0501234567", business: biz() }, repo, { env: ENV });
+    await processSmsRow(q!.id, repo, ctx(ok()));
+    // 150 + space + 66-character link = 217 units -> 4 segments
+    expect(rows.get(q!.id)!.segments).toBe(4);
   });
 });

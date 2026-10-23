@@ -3,6 +3,7 @@ import {
   getBusinessBySlug,
   getBusinessByPhone,
   getBusinessById,
+  getServices,
   updateBusiness,
   createBusiness,
   deleteBusiness,
@@ -19,7 +20,13 @@ import {
 import { isPasswordPwned, PWNED_ERROR } from "@/lib/pwned";
 import { clientIp, rateLimit, tooMany } from "@/lib/rateLimit";
 import { forgetCredentialCache, getValidSession, requireRole, MANAGEMENT, OWNER_ONLY } from "@/lib/access";
-import { sanitizeDateOverrides, sanitizeSettings, sanitizeWorkingHours } from "@/lib/validation";
+import {
+  preserveMissingSmsSettings,
+  sanitizeDateOverrides,
+  sanitizeSettings,
+  sanitizeWorkingHours,
+  smsSettingsError,
+} from "@/lib/validation";
 import { randomBusinessSlug } from "@/lib/slug";
 import { disconnectCalendarQuietly } from "@/lib/google-sync";
 
@@ -115,7 +122,20 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "מרווח זמן לא תקין" }, { status: 400 });
     }
     // Whitelist + sanitise client-controlled JSON (blocks javascript: links, oversized/odd shapes).
-    const cleanSettings = settings !== undefined ? sanitizeSettings(settings) : undefined;
+    let cleanSettings = settings !== undefined ? sanitizeSettings(settings) : undefined;
+    if (cleanSettings !== undefined) {
+      // The SMS wording is checked against this business's real names (the longest message it can produce),
+      // and the SMS settings a screen did not send keep their stored value.
+      const stored = await getBusinessById(businessId);
+      const services = await getServices(businessId);
+      const smsError = smsSettingsError(settings, {
+        businessName: (typeof name === "string" && name.trim()) || stored?.name || "",
+        longestServiceName: services.reduce((longest, s) => (s.name.length > longest.length ? s.name : longest), ""),
+        siteUrl: process.env.NEXT_PUBLIC_SITE_URL,
+      });
+      if (smsError) return NextResponse.json({ error: smsError }, { status: 400 });
+      cleanSettings = preserveMissingSmsSettings(settings, cleanSettings, stored?.settings);
+    }
     const cleanHours = working_hours !== undefined ? sanitizeWorkingHours(working_hours) : undefined;
     if (working_hours !== undefined && !cleanHours) {
       return NextResponse.json({ error: "שעות עבודה לא תקינות" }, { status: 400 });
