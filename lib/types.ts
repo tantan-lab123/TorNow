@@ -84,6 +84,8 @@ export interface BusinessSettings {
   sms_reminder_minutes?: number;
   /** Wording of the reminder (same variables as the confirmation). Missing or empty = the system default. Never public. */
   sms_reminder_template?: string;
+  /** Public yes/no, computed for the public business JSON only (never stored): this business sends reminder SMS. */
+  sms_reminder_enabled?: boolean;
   /** Colour theme of the public booking and manage pages: an id from lib/theme.ts (missing = forest). Public. */
   theme_color?: string;
 }

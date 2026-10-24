@@ -1523,7 +1523,11 @@ export default function BookingPage() {
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 pt-1">{changePolicy}</p>
-                <p className="text-xs text-slate-500">תקבל/י SMS אישור עם קישור לניהול התור.</p>
+                <p className="text-xs text-slate-500">
+                  {business?.settings?.sms_reminder_enabled
+                    ? "תקבל/י SMS אישור עם קישור לניהול התור, ותזכורת לפני התור."
+                    : "תקבל/י SMS אישור עם קישור לניהול התור."}
+                </p>
               </Card>
 
               <StickyFooter>

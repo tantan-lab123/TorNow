@@ -96,7 +96,7 @@ describe("theme_color is public", () => {
       owner_phone: "0501234567",
       settings: { theme_color: "teal", sms_confirmation_enabled: false, sms_reminder_minutes: 60 },
     } as unknown as Business;
-    expect(toPublicBusiness(b).settings).toEqual({ theme_color: "teal" });
+    expect(toPublicBusiness(b).settings).toEqual({ theme_color: "teal", sms_reminder_enabled: true });
   });
 });
 
