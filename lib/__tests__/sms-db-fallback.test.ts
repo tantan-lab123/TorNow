@@ -11,9 +11,11 @@ interface Call {
   payload?: Record<string, unknown>;
   filters: [string, string, unknown][];
   range?: [number, number];
+  columns?: string;
+  selectOpts?: Record<string, unknown>;
 }
 
-type Reply = { data?: unknown; error?: { code?: string; message?: string } | null };
+type Reply = { data?: unknown; count?: number | null; error?: { code?: string; message?: string } | null };
 
 const state = vi.hoisted(() => ({ calls: [] as Call[], replies: [] as Reply[] }));
 
@@ -21,9 +23,9 @@ vi.mock("@/lib/db/supabase", () => {
   const next = (): Reply => state.replies.shift() ?? { data: null, error: null };
   const builder = (call: Call) => {
     const b: Record<string, unknown> = {};
-    for (const m of ["eq", "gte", "lte", "is", "not", "in", "order", "limit"]) {
+    for (const m of ["eq", "neq", "gte", "lte", "is", "not", "in", "order", "limit"]) {
       b[m] = (...args: unknown[]) => {
-        if (m === "eq" || m === "gte" || m === "lte" || m === "is") call.filters.push([m, String(args[0]), args[1]]);
+        if (m === "eq" || m === "neq" || m === "gte" || m === "lte" || m === "is" || m === "in") call.filters.push([m, String(args[0]), args[1]]);
         return b;
       };
     }
@@ -48,8 +50,8 @@ vi.mock("@/lib/db/supabase", () => {
         state.calls.push(call);
         return builder(call);
       },
-      select: () => {
-        const call: Call = { table, op: "select", filters: [] };
+      select: (columns?: string, selectOpts?: Record<string, unknown>) => {
+        const call: Call = { table, op: "select", filters: [], columns, selectOpts };
         state.calls.push(call);
         return builder(call);
       },
@@ -58,7 +60,14 @@ vi.mock("@/lib/db/supabase", () => {
   return { supabaseAdmin: admin, isSupabaseConfigured: true, supabase: null };
 });
 
-import { finishSmsOutbox, getSmsUsage, insertSmsOutbox, isMissingColumnError } from "@/lib/db/sms";
+import {
+  countRecentByPhone,
+  finishSmsOutbox,
+  getReminderStart,
+  getSmsUsage,
+  insertSmsOutbox,
+  isMissingColumnError,
+} from "@/lib/db/sms";
 import { israelMonthStartIso } from "@/lib/sms/usage";
 
 beforeEach(() => {
@@ -126,7 +135,12 @@ describe("usage", () => {
     const now = new Date("2026-10-15T12:00:00Z");
     state.replies = [{ data: [{ segments: 2 }, { segments: 3 }, { segments: null }] }];
     const usage = await getSmsUsage("b1", now);
-    expect(usage).toEqual({ sent: 3, segments: 5, since: "2026-09-30T21:00:00.000Z" });
+    expect(usage).toEqual({
+      sent: 3,
+      segments: 5,
+      byKind: { booked: 3, reminder: 0 },
+      since: "2026-09-30T21:00:00.000Z",
+    });
 
     const q = state.calls[0];
     expect(q.table).toBe("sms_outbox");
@@ -149,6 +163,93 @@ describe("usage", () => {
   it("fails (the screen then shows a dash) when the column does not exist yet", async () => {
     state.replies = [{ error: { code: "42703", message: "column business_id does not exist" } }];
     await expect(getSmsUsage("b1")).rejects.toMatchObject({ code: "42703" });
+  });
+});
+
+describe("usage by kind", () => {
+  it("counts confirmations and reminders separately (both are in the total)", async () => {
+    state.replies = [
+      {
+        data: [
+          { segments: 2, kind: "booked" },
+          { segments: 2, kind: "reminder" },
+          { segments: 2, kind: "reminder" },
+        ],
+      },
+    ];
+    const usage = await getSmsUsage("b1", new Date("2026-10-15T12:00:00Z"));
+    expect(usage).toMatchObject({ sent: 3, segments: 6, byKind: { booked: 1, reminder: 2 } });
+    expect(state.calls[0].columns).toBe("segments, kind");
+  });
+});
+
+describe("reminder rows", () => {
+  const reminder = {
+    appointmentId: "a1",
+    businessId: "b1",
+    kind: "reminder" as const,
+    forStartTime: "2026-11-05T13:30:00Z",
+    toPhone: "501234567",
+    status: "pending" as const,
+  };
+
+  it("are written with the appointment time they are for", async () => {
+    state.replies = [{ data: { id: "r1" } }];
+    await expect(insertSmsOutbox(reminder)).resolves.toEqual({ id: "r1" });
+    expect(state.calls[0].payload).toMatchObject({ kind: "reminder", for_start_time: "2026-11-05T13:30:00Z" });
+  });
+
+  it("confirmations are written without it (they keep working before the migration)", async () => {
+    state.replies = [{ data: { id: "c1" } }];
+    await insertSmsOutbox({ ...reminder, kind: "booked", forStartTime: null });
+    expect(state.calls[0].payload).not.toHaveProperty("for_start_time");
+  });
+
+  it("a reminder is NOT written without its time when the column is missing: it fails, nothing is sent", async () => {
+    state.replies = [{ error: { code: "PGRST204", message: "Could not find the 'for_start_time' column" } }];
+    await expect(insertSmsOutbox(reminder)).rejects.toMatchObject({ code: "PGRST204" });
+    expect(state.calls).toHaveLength(1);
+  });
+
+  it("a second reminder for the same appointment time is the duplicate (null), not an error", async () => {
+    state.replies = [{ error: { code: "23505" } }];
+    await expect(insertSmsOutbox(reminder)).resolves.toBeNull();
+  });
+
+  it("the start time of a row is read back", async () => {
+    state.replies = [{ data: { for_start_time: "2026-11-05T13:30:00+00:00" } }];
+    await expect(getReminderStart("r1")).resolves.toBe("2026-11-05T13:30:00+00:00");
+    state.replies = [{ data: null }];
+    await expect(getReminderStart("nope")).resolves.toBeNull();
+  });
+});
+
+describe("the per-phone count", () => {
+  it("counts only pending and sent rows of that phone since the given time", async () => {
+    state.replies = [{ count: 2 }];
+    await expect(countRecentByPhone("501234567", "2026-11-05T09:00:00.000Z")).resolves.toBe(2);
+    const q = state.calls[0];
+    expect(q.table).toBe("sms_outbox");
+    expect(q.selectOpts).toMatchObject({ count: "exact", head: true });
+    expect(q.filters).toContainEqual(["eq", "to_phone", "501234567"]);
+    expect(q.filters).toContainEqual(["in", "status", ["pending", "sent"]]);
+    expect(q.filters).toContainEqual(["gte", "created_at", "2026-11-05T09:00:00.000Z"]);
+  });
+
+  it("can leave out one row and only look at the rows created before it", async () => {
+    state.replies = [{ count: 0 }];
+    await countRecentByPhone("501234567", "2026-11-05T09:00:00.000Z", {
+      excludeId: "row-9",
+      createdUpToIso: "2026-11-05T09:30:00.000Z",
+    });
+    const q = state.calls[0];
+    expect(q.filters).toContainEqual(["neq", "id", "row-9"]);
+    expect(q.filters).toContainEqual(["lte", "created_at", "2026-11-05T09:30:00.000Z"]);
+  });
+
+  it("a database error is not swallowed (the caller decides)", async () => {
+    state.replies = [{ error: { code: "08006", message: "connection failure" } }];
+    await expect(countRecentByPhone("501234567", "2026-11-05T09:00:00.000Z")).rejects.toMatchObject({ code: "08006" });
   });
 });
 

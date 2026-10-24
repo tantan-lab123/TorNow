@@ -1,16 +1,25 @@
 import { randomUUID } from "crypto";
-import { getAppointmentById, getBusinessById } from "@/lib/db";
+import { getAppointmentById, getAppointments, getBusinessById, getBusinesses } from "@/lib/db";
 import { israelMonthStartIso } from "@/lib/sms/usage";
 import { isSupabaseConfigured, supabaseAdmin } from "./supabase";
 import type { FinishPatch, SmsKind, SmsOutboxRow, SmsRepo, SmsStatus } from "@/lib/sms/outbox";
+import type { CountOptions } from "@/lib/sms/limits";
+import { normalizeReminderMinutes } from "@/lib/sms/message";
+import {
+  reminderKey,
+  type ReminderBusiness,
+  type ReminderCandidate,
+  type ReminderRepo,
+} from "@/lib/sms/reminders";
 
 /** Database access for the SMS queue. Supabase in production, memory in local development. */
 
-const COLUMNS = "id, appointment_id, kind, to_phone, status, attempts, next_attempt_at";
+const COLUMNS = "id, appointment_id, kind, to_phone, status, attempts, next_attempt_at, created_at";
 
 interface MockRow extends SmsOutboxRow {
   business_id: string | null;
   segments: number | null;
+  for_start_time: string | null;
   last_error_code: string | null;
   last_error_message: string | null;
   provider_shipment_id: string | null;
@@ -41,6 +50,8 @@ export async function insertSmsOutbox(row: {
   appointmentId: string;
   businessId?: string | null;
   kind: SmsKind;
+  /** Reminders only: the appointment start the reminder is for */
+  forStartTime?: string | null;
   toPhone: string;
   status: SmsStatus;
   errorCode?: string;
@@ -58,26 +69,43 @@ export async function insertSmsOutbox(row: {
       last_error_code: row.errorCode ?? null,
       last_error_message: row.errorMessage ?? null,
     };
+    // for_start_time only exists with the reminders migration, and only reminders need it: the
+    // confirmation rows are written exactly as before, so they keep working until it has run.
+    const withStart = row.kind === "reminder" ? { for_start_time: row.forStartTime ?? null } : {};
     let res = await admin
       .from("sms_outbox")
-      .insert({ ...base, business_id: row.businessId ?? null })
+      .insert({ ...base, ...withStart, business_id: row.businessId ?? null })
       .select("id")
       .maybeSingle();
-    if (isMissingColumnError(res.error)) {
+    if (isMissingColumnError(res.error) && row.kind !== "reminder") {
       res = await admin.from("sms_outbox").insert(base).select("id").maybeSingle();
     }
     // 23505 = unique_violation: this appointment already has a message of this kind
+    // (a reminder: already one for this appointment time)
     if (res.error?.code === "23505") return null;
     if (res.error) throw res.error;
     return res.data ? { id: res.data.id as string } : null;
   }
-  if (mock.some((r) => r.appointment_id === row.appointmentId && r.kind === row.kind)) return null;
+  const startMs = row.forStartTime ? new Date(row.forStartTime).getTime() : null;
+  const exists =
+    row.kind === "reminder"
+      ? mock.some(
+          (r) =>
+            r.appointment_id === row.appointmentId &&
+            r.kind === "reminder" &&
+            r.for_start_time &&
+            new Date(r.for_start_time).getTime() === startMs
+        )
+      : mock.some((r) => r.appointment_id === row.appointmentId && r.kind === row.kind);
+  if (exists) return null;
   const id = randomUUID();
   mock.push({
     id,
     appointment_id: row.appointmentId,
     business_id: row.businessId ?? null,
     segments: null,
+    for_start_time: row.kind === "reminder" ? (row.forStartTime ?? null) : null,
+    created_at: nowIso,
     kind: row.kind,
     to_phone: row.toPhone,
     status: row.status,
@@ -95,7 +123,7 @@ export async function insertSmsOutbox(row: {
 }
 
 /**
- * Atomic claim: compare-and-swap on the attempt counter, so when the `after()` task and the
+ * Atomic claim: compare-and-swap on the attempt counter, so when the after() task and the
  * cron job race for the same row exactly one of them wins and the other sees null.
  */
 export async function claimSmsOutbox(id: string, nowIso: string, leaseUntilIso: string): Promise<SmsOutboxRow | null> {
@@ -261,6 +289,8 @@ export interface SmsUsage {
   sent: number;
   /** Their SMS segments (rows from before the segments column count as 0) */
   segments: number;
+  /** How many of them were confirmations and how many reminders */
+  byKind: { booked: number; reminder: number };
   /** Start of the counted month (Israel time), ISO */
   since: string;
 }
@@ -272,11 +302,12 @@ export async function getSmsUsage(businessId: string, now: Date = new Date()): P
   if (admin) {
     let sent = 0;
     let segments = 0;
+    const byKind = { booked: 0, reminder: 0 };
     const PAGE = 1000;
     for (let from = 0; ; from += PAGE) {
       const { data, error } = await admin
         .from("sms_outbox")
-        .select("segments")
+        .select("segments, kind")
         .eq("business_id", businessId)
         .eq("status", "sent")
         .gte("created_at", since)
@@ -284,17 +315,173 @@ export async function getSmsUsage(businessId: string, now: Date = new Date()): P
         .order("id", { ascending: true })
         .range(from, from + PAGE - 1);
       if (error) throw error;
-      for (const r of (data ?? []) as { segments: number | null }[]) {
+      for (const r of (data ?? []) as { segments: number | null; kind: string }[]) {
         sent += 1;
         segments += r.segments ?? 0;
+        if (r.kind === "reminder") byKind.reminder += 1;
+        else byKind.booked += 1;
       }
       if (!data || data.length < PAGE) break;
     }
-    return { sent, segments, since };
+    return { sent, segments, byKind, since };
   }
   const rows = mock.filter((r) => r.business_id === businessId && r.status === "sent");
-  return { sent: rows.length, segments: rows.reduce((n, r) => n + (r.segments ?? 0), 0), since };
+  return {
+    sent: rows.length,
+    segments: rows.reduce((n, r) => n + (r.segments ?? 0), 0),
+    byKind: {
+      booked: rows.filter((r) => r.kind !== "reminder").length,
+      reminder: rows.filter((r) => r.kind === "reminder").length,
+    },
+    since,
+  };
 }
+
+/**
+ * Messages to this phone created since sinceIso with status pending or sent (skipped and failed
+ * ones do not count). The per-phone abuse limits are decided from this, in the database, so every
+ * server instance sees the same numbers.
+ */
+export async function countRecentByPhone(phone: string, sinceIso: string, opts: CountOptions = {}): Promise<number> {
+  const admin = adminClient();
+  if (admin) {
+    let q = admin
+      .from("sms_outbox")
+      .select("id", { count: "exact", head: true })
+      .eq("to_phone", phone)
+      .in("status", ["pending", "sent"])
+      .gte("created_at", sinceIso);
+    if (opts.excludeId) q = q.neq("id", opts.excludeId);
+    if (opts.createdUpToIso) q = q.lte("created_at", opts.createdUpToIso);
+    const { count, error } = await q;
+    if (error) throw error;
+    return count ?? 0;
+  }
+  return mock.filter(
+    (r) =>
+      r.to_phone === phone &&
+      (r.status === "pending" || r.status === "sent") &&
+      r.created_at >= sinceIso &&
+      r.id !== opts.excludeId &&
+      (!opts.createdUpToIso || r.created_at <= opts.createdUpToIso)
+  ).length;
+}
+
+/** The appointment start a reminder row was made for. */
+export async function getReminderStart(id: string): Promise<string | null> {
+  const admin = adminClient();
+  if (admin) {
+    const { data, error } = await admin.from("sms_outbox").select("for_start_time").eq("id", id).maybeSingle();
+    if (error) throw error;
+    return (data?.for_start_time as string | null | undefined) ?? null;
+  }
+  return mock.find((r) => r.id === id)?.for_start_time ?? null;
+}
+
+// ---------------------------------------------------------------- reminders (the planner's reads)
+
+const IDS_PER_REQUEST = 150; // appointment ids per request (keeps the URL short)
+
+export const reminderRepo: ReminderRepo = {
+  async listReminderBusinesses(): Promise<ReminderBusiness[]> {
+    const admin = adminClient();
+    if (admin) {
+      // Only the one setting is read (the settings can hold large images). If the database does not
+      // understand the path, fall back to reading the businesses whole.
+      const { data, error } = await admin
+        .from("businesses")
+        .select("id, slug, minutes:working_hours->_settings->>sms_reminder_minutes");
+      if (!error && data) {
+        return (data as unknown as { id: string; slug: string; minutes: string | number | null }[]).map((b) => ({
+          id: b.id,
+          slug: b.slug,
+          minutes: normalizeReminderMinutes(b.minutes),
+        }));
+      }
+    }
+    const all = await getBusinesses();
+    return all.map((b) => ({
+      id: b.id,
+      slug: b.slug,
+      minutes: normalizeReminderMinutes(b.settings?.sms_reminder_minutes),
+    }));
+  },
+
+  async listReminderCandidates({ businessIds, startAfterIso, startBeforeIso, limit }): Promise<ReminderCandidate[]> {
+    const admin = adminClient();
+    if (admin) {
+      const { data, error } = await admin
+        .from("appointments")
+        .select("id, business_id, start_time, created_at, client:clients(phone)")
+        .in("business_id", businessIds)
+        .eq("status", "confirmed")
+        .not("service_id", "is", null) // blocked time has no service
+        .gt("start_time", startAfterIso)
+        .lte("start_time", startBeforeIso)
+        .order("start_time", { ascending: true })
+        .limit(limit);
+      if (error) throw error;
+      type Row = {
+        id: string;
+        business_id: string;
+        start_time: string;
+        created_at: string;
+        client: { phone?: string } | { phone?: string }[] | null;
+      };
+      return ((data ?? []) as unknown as Row[]).map((r) => {
+        const client = Array.isArray(r.client) ? r.client[0] : r.client;
+        return {
+          id: r.id,
+          business_id: r.business_id,
+          start_time: r.start_time,
+          created_at: r.created_at,
+          phone: client?.phone ?? null,
+        };
+      });
+    }
+    const out: ReminderCandidate[] = [];
+    for (const businessId of businessIds) {
+      const rows = await getAppointments(businessId, startAfterIso);
+      for (const a of rows) {
+        if (a.status !== "confirmed" || !a.service_id) continue;
+        if (a.start_time <= startAfterIso || a.start_time > startBeforeIso) continue;
+        out.push({
+          id: a.id,
+          business_id: a.business_id,
+          start_time: a.start_time,
+          created_at: a.created_at ?? a.start_time,
+          phone: a.client?.phone ?? null,
+        });
+      }
+    }
+    return out.sort((x, y) => x.start_time.localeCompare(y.start_time)).slice(0, limit);
+  },
+
+  async existingReminderKeys(appointmentIds: string[]): Promise<Set<string>> {
+    const keys = new Set<string>();
+    const admin = adminClient();
+    if (admin) {
+      for (let i = 0; i < appointmentIds.length; i += IDS_PER_REQUEST) {
+        const { data, error } = await admin
+          .from("sms_outbox")
+          .select("appointment_id, for_start_time")
+          .eq("kind", "reminder")
+          .in("appointment_id", appointmentIds.slice(i, i + IDS_PER_REQUEST));
+        if (error) throw error;
+        for (const r of (data ?? []) as { appointment_id: string; for_start_time: string | null }[]) {
+          if (r.for_start_time) keys.add(reminderKey(r.appointment_id, r.for_start_time));
+        }
+      }
+      return keys;
+    }
+    for (const r of mock) {
+      if (r.kind === "reminder" && r.for_start_time && appointmentIds.includes(r.appointment_id)) {
+        keys.add(reminderKey(r.appointment_id, r.for_start_time));
+      }
+    }
+    return keys;
+  },
+};
 
 export const smsRepo: SmsRepo = {
   insert: insertSmsOutbox,
@@ -303,5 +490,7 @@ export const smsRepo: SmsRepo = {
   finish: finishSmsOutbox,
   setToken: setSmsManageToken,
   getAppointment: getAppointmentById,
+  getReminderStart,
+  countRecentByPhone,
   getBusiness: getBusinessById,
 };

@@ -24,18 +24,36 @@
     --input: #E2DDCF;
     --ring: #1E4D36;
     --radius: 10px;
+    /* Brand and accent colours as "R G B" (tailwind: rgb(var(--brand-600) / alpha)). These defaults are
+       the original bottle green; the public booking pages override them per business (lib/theme.ts,
+       preset "forest" = exactly these values, a test keeps the two in step). */
+    --brand-50: 239 244 238;
+    --brand-100: 225 235 226;
+    --brand-200: 201 220 205;
+    --brand-300: 163 194 171;
+    --brand-400: 94 143 108;
+    --brand-500: 47 107 75;
+    --brand-600: 30 77 54;
+    --brand-700: 22 59 41;
+    --brand-800: 17 46 32;
+    --brand-900: 12 33 23;
+    --brand-950: 8 22 15;
+    --lime: 207 234 110;
+    --lime-ink: 26 46 18;
+    --lime-edge: 184 212 88;
+    --lime-soft: 238 247 207;
     --m-spring: cubic-bezier(.34, 1.56, .64, 1);
     --m-out: cubic-bezier(.2, .8, .2, 1);
   }
 
   :focus-visible {
-    outline: 2px solid #1E4D36;
+    outline: 2px solid rgb(var(--brand-600));
     outline-offset: 2px;
   }
 
   ::selection {
-    background: #CFEA6E;
-    color: #1A2E12;
+    background: rgb(var(--lime));
+    color: rgb(var(--lime-ink));
   }
 }
 
@@ -135,8 +153,8 @@ a {
 
 /* Success stamp: the button turns lime and bounces once */
 .m-stamp {
-  background: #CFEA6E !important;
-  color: #1A2E12 !important;
+  background: rgb(var(--lime)) !important;
+  color: rgb(var(--lime-ink)) !important;
   animation: m-stamp 0.45s var(--m-spring);
 }
 @keyframes m-stamp {
@@ -161,12 +179,12 @@ a {
   flex: none;
   border-radius: 50%;
   border: 2.5px solid rgba(255, 253, 249, 0.3);
-  border-top-color: #CFEA6E;
+  border-top-color: rgb(var(--lime));
   animation: m-rot 0.7s linear infinite;
 }
 .m-spin-dark {
   border-color: rgba(23, 32, 26, 0.18);
-  border-top-color: #1E4D36;
+  border-top-color: rgb(var(--brand-600));
 }
 @keyframes m-rot { to { transform: rotate(360deg); } }
 

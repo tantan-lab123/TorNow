@@ -1,11 +1,13 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
 /**
  * Wiring test: the real database layer (in-memory variant, as in local development), the real
  * queue code and the real token lookup, with a fake 019 instead of the network.
  */
 
-const BIZ = "a1111111-1111-1111-1111-111111111111"; // seeded sample business
+// A real (non-demo) business created for the test: the seeded sample businesses are demos and never send.
+let BIZ = "";
+const DEMO_BIZ = "a1111111-1111-1111-1111-111111111111"; // barber-dan, a demo business
 const ENV = {
   SMS_019_API_TOKEN: "tok",
   SMS_019_USERNAME: "user",
@@ -13,11 +15,18 @@ const ENV = {
   NEXT_PUBLIC_SITE_URL: "https://tornow.example",
 };
 
-async function bookAppointment() {
+beforeAll(async () => {
   const db = await import("@/lib/db");
-  const [service] = await db.getServices(BIZ);
-  const client = await db.findOrCreateClient(BIZ, {
-    phone: "0501234567",
+  const business = await db.createBusiness({ name: "סלון בדיקה", slug: "test-salon", owner_phone: "0529990000" });
+  BIZ = business.id;
+  await db.createService({ business_id: BIZ, name: "תספורת", duration_minutes: 30, buffer_minutes: 0, price: 80 });
+});
+
+async function bookAppointment(businessId: string = BIZ, phone = "0501234567") {
+  const db = await import("@/lib/db");
+  const [service] = await db.getServices(businessId);
+  const client = await db.findOrCreateClient(businessId, {
+    phone,
     first_name: "דנה",
     last_name: "כהן",
     auth_provider: "guest",
@@ -25,7 +34,7 @@ async function bookAppointment() {
   const start = new Date(Date.now() + 3 * 24 * 3600 * 1000);
   const end = new Date(start.getTime() + 30 * 60_000);
   return db.createAppointment({
-    business_id: BIZ,
+    business_id: businessId,
     service_id: service.id,
     client_id: client.id,
     start_time: start.toISOString(),
@@ -129,9 +138,9 @@ describe("sms confirmation, end to end (in-memory db + fake 019)", () => {
       settings: { ...business.settings, sms_confirmation_template: "היי {name}, ב-{date} ב-{time} ל{service}. {link}" },
     });
     const withTemplate = (await db.getBusinessById(BIZ))!;
-    const appt = await bookAppointment();
+    const appt = await bookAppointment(BIZ, "0521112233");
     const q = await enqueueBookedSms(
-      { appointmentId: appt.id, phone: "0501234567", business: withTemplate },
+      { appointmentId: appt.id, phone: "0521112233", business: withTemplate },
       smsRepo,
       { env: ENV }
     );
@@ -148,9 +157,37 @@ describe("sms confirmation, end to end (in-memory db + fake 019)", () => {
     // 3) the owner switches the SMS off: the next booking is skipped, nothing is sent, nothing is counted
     await db.updateBusiness(BIZ, { settings: { ...withTemplate.settings, sms_confirmation_enabled: false } });
     const off = (await db.getBusinessById(BIZ))!;
-    const appt2 = await bookAppointment();
-    const skipped = await enqueueBookedSms({ appointmentId: appt2.id, phone: "0501234567", business: off }, smsRepo, { env: ENV });
+    const appt2 = await bookAppointment(BIZ, "0521112244");
+    const skipped = await enqueueBookedSms({ appointmentId: appt2.id, phone: "0521112244", business: off }, smsRepo, { env: ENV });
     expect(skipped?.status).toBe("skipped");
     expect((await getSmsUsage(BIZ)).sent).toBe(usageAfter.sent);
+  });
+
+  it("a demo business never sends: not at booking, not even for a row that already exists", async () => {
+    const { smsRepo } = await import("@/lib/db/sms");
+    const { enqueueBookedSms, processSmsRow } = await import("@/lib/sms/outbox");
+    const db = await import("@/lib/db");
+
+    const demo = (await db.getBusinessById(DEMO_BIZ))!;
+    expect(demo.slug).toBe("barber-dan");
+    const appt = await bookAppointment(DEMO_BIZ);
+
+    // booking: queued as skipped / demo_business
+    const fetchImpl = reply({ status: 0, shipment_id: "S" });
+    const queued = await enqueueBookedSms({ appointmentId: appt.id, phone: "0501234567", business: demo }, smsRepo, { env: ENV });
+    expect(queued?.status).toBe("skipped");
+
+    // a row that is somehow pending anyway (inserted by hand): the send step refuses it
+    const appt2 = await bookAppointment(DEMO_BIZ);
+    const row = await smsRepo.insert({
+      appointmentId: appt2.id,
+      businessId: DEMO_BIZ,
+      kind: "booked",
+      toPhone: "501234567",
+      status: "pending",
+    });
+    const outcome = await processSmsRow(row!.id, smsRepo, { env: ENV, send: { fetchImpl: fetchImpl as unknown as typeof fetch } });
+    expect(outcome).toBe("skipped");
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 });

@@ -1,7 +1,7 @@
-import { recordSmsDelivery, smsRepo } from "@/lib/db/sms";
+import { recordSmsDelivery, reminderRepo, smsRepo } from "@/lib/db/sms";
 import { applyDlr, parseDlrDate, parseDlrStatus } from "@/lib/sms/dlr";
-import type { BusinessSettings } from "@/lib/types";
-import { enqueueBookedSms, processDueSms, processSmsRowSafely } from "@/lib/sms/outbox";
+import { enqueueBookedSms, processDueSms, processSmsRowSafely, type SmsBusiness } from "@/lib/sms/outbox";
+import { planDueReminders } from "@/lib/sms/reminders";
 
 /**
  * Wiring of the SMS core to the real database. Route handlers import from here.
@@ -14,7 +14,7 @@ import { enqueueBookedSms, processDueSms, processSmsRowSafely } from "@/lib/sms/
 export async function queueBookedSms(
   appointmentId: string,
   phone: string,
-  business?: { id: string; settings?: BusinessSettings } | null
+  business?: SmsBusiness | null
 ): Promise<string | null> {
   const row = await enqueueBookedSms({ appointmentId, phone, business }, smsRepo);
   return row && row.status === "pending" ? row.id : null;
@@ -26,6 +26,9 @@ export function sendSmsInBackground(outboxId: string): Promise<void> {
 }
 
 export const runDueSms = (limit = 10) => processDueSms(smsRepo, { limit });
+
+/** Queues the reminders that have become due (see lib/sms/reminders.ts). */
+export const planReminders = () => planDueReminders({ reminders: reminderRepo, sms: smsRepo });
 
 /**
  * One delivery report from 019. Idempotent; unknown rows and unreadable fields are ignored

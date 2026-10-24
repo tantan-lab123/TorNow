@@ -3,6 +3,7 @@ import React from "react";
 import Link from "next/link";
 import { Check, ChevronLeft } from "lucide-react";
 import { getBusinessBySlug } from "@/lib/db";
+import { DEMO_BUSINESS_SLUGS } from "@/lib/demo";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/brand/Logo";
 import { PhoneFrame, Screen } from "@/components/landing/PhoneFrame";
@@ -34,12 +35,12 @@ export const metadata: Metadata = {
 };
 
 // Demo booking pages the landing page links to, in order of preference. Only the ones
-// that exist in this database are linked, by name only.
-const DEMO_SLUGS = ["barber-dan", "maya-nails", "clinic-rafael"];
+// that exist in this database are linked, by name only. (The list lives in lib/demo.ts:
+// the same businesses never send an SMS.)
 
 async function getDemos(): Promise<{ slug: string; name: string }[]> {
   try {
-    const found = await Promise.all(DEMO_SLUGS.map((slug) => getBusinessBySlug(slug)));
+    const found = await Promise.all(DEMO_BUSINESS_SLUGS.map((slug) => getBusinessBySlug(slug)));
     return found.flatMap((b) => (b ? [{ slug: b.slug, name: b.name }] : []));
   } catch {
     return [];
