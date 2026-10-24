@@ -129,7 +129,7 @@ describe("the SMS settings stay out of the public business JSON", () => {
 
   it("toPublicBusiness removes them (and keeps the rest)", () => {
     const pub = toPublicBusiness(business);
-    expect(pub.settings).toEqual({ address: "הרצל 1" });
+    expect(pub.settings).toEqual({ address: "הרצל 1", sms_reminder_enabled: false });
     expect(JSON.stringify(pub)).not.toMatch(/sms_confirmation/);
   });
 

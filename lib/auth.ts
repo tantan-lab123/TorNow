@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { Business } from "@/lib/types";
 import { dropLegacyPrefills } from "@/lib/validation";
+import { isDemoBusiness } from "@/lib/demo";
+import { normalizeReminderMinutes } from "@/lib/sms/message";
 
 export const SESSION_COOKIE = "tornow_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 14; // 14 days
@@ -199,12 +201,16 @@ export function toPublicBusiness(b: Business): Business {
   // the share-picture is a large inline image that only /api/og needs: keep it out of the public JSON
   const publicSettings = dropLegacyPrefills(rest.settings);
   if (publicSettings) {
+    // The booking page may say "and a reminder" only when this business sends reminders. Only that yes/no is
+    // public (never the time or the wording), and never for a demo business, which sends nothing.
+    const remindersOn = normalizeReminderMinutes(publicSettings.sms_reminder_minutes) > 0 && !isDemoBusiness(b);
     delete publicSettings.og_image_url;
     // the SMS switch and wording are the owner's business, not the booking page's
     delete publicSettings.sms_confirmation_enabled;
     delete publicSettings.sms_confirmation_template;
     delete publicSettings.sms_reminder_minutes;
     delete publicSettings.sms_reminder_template;
+    publicSettings.sms_reminder_enabled = remindersOn;
   }
   return { ...rest, settings: publicSettings } as Business;
 }

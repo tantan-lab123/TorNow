@@ -168,8 +168,8 @@ describe("the reminder settings stay out of the public business JSON", () => {
 
   it("toPublicBusiness keeps the address and the colour theme and nothing of the SMS", () => {
     const pub = toPublicBusiness(business);
-    expect(pub.settings).toEqual({ address: "הרצל 1", theme_color: "ocean" });
-    expect(JSON.stringify(pub)).not.toMatch(/sms_/);
+    expect(pub.settings).toEqual({ address: "הרצל 1", theme_color: "ocean", sms_reminder_enabled: true });
+    expect(JSON.stringify(pub)).not.toMatch(/sms_(confirmation|reminder_minutes|reminder_template)/);
   });
 
   it("the owner's own view has them", () => {
@@ -268,7 +268,7 @@ describe("PATCH /api/business with the reminder settings (real route)", () => {
     await patchBusiness(owner, { settings: { sms_reminder_minutes: 60, sms_reminder_template: "תזכורת {link}", theme_color: "rose" } });
     const { GET } = await import("@/app/api/business/route");
     const pub = await (await GET(new NextRequest("http://localhost/api/business?id=" + BIZ))).json();
-    expect(JSON.stringify(pub)).not.toMatch(/sms_/);
+    expect(JSON.stringify(pub)).not.toMatch(/sms_(confirmation|reminder_minutes|reminder_template)/);
     expect(pub.settings.theme_color).toBe("rose");
   });
 
