@@ -17,6 +17,11 @@ export function normalizePhoneDigits(raw: string): string {
   return d.startsWith("0") ? d : `0${d}`;
 }
 
+/** A phone that stands for "no phone" (the quick-add placeholder, the blocked-time client). */
+export function isPlaceholderPhone(phone: string | null | undefined): boolean {
+  return PLACEHOLDER_PHONES.has(normalizePhoneDigits(phone ?? ""));
+}
+
 /** Placeholder customers ("walk-in", "customer #1a2b") and the blocked-time client are not real customers. */
 export function isPlaceholderClient(c: Pick<Client, "phone" | "first_name" | "last_name">): boolean {
   if (PLACEHOLDER_PHONES.has(normalizePhoneDigits(c.phone ?? ""))) return true;

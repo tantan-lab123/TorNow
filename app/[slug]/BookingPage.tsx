@@ -54,6 +54,7 @@ import {
 } from "date-fns";
 import { he } from "date-fns/locale";
 import { alertDialog } from "@/lib/dialogs";
+import { themeConfettiColors } from "@/lib/theme";
 
 const STORAGE_KEY = "schedule_saved_client_v1";
 // Booking progress is parked here while the customer is away signing in with Google.
@@ -571,7 +572,7 @@ export default function BookingPage() {
         particleCount: 70,
         spread: 60,
         origin: { y: 0.55 },
-        colors: ["#1E4D36", "#CFEA6E", "#2F6B4B", "#F4F1E8"],
+        colors: themeConfettiColors(business?.settings?.theme_color),
         disableForReducedMotion: true,
       });
     } catch (err) {

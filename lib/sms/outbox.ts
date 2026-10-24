@@ -9,8 +9,9 @@ import {
 } from "@/lib/sms/019";
 import { generateManageToken, hashManageToken } from "@/lib/sms/manage-token";
 import { buildManageUrl } from "@/lib/sms/template";
-import { countSegments, dateTimeVars, renderBookedMessageDetailed } from "@/lib/sms/message";
-import { SKIP_BUSINESS_DISABLED, getSmsTemplate, shouldSendSms } from "@/lib/sms/policy";
+import { countSegments, dateTimeVars, renderSmsMessageDetailed } from "@/lib/sms/message";
+import { getSmsTemplate, smsBlockReason } from "@/lib/sms/policy";
+import { phoneLimitHit, type PhoneCounter } from "@/lib/sms/limits";
 
 /**
  * The SMS queue, same idea as the Google Calendar sync: a booking never waits for the
@@ -27,6 +28,9 @@ export const MAX_ATTEMPTS = BACKOFF_MINUTES.length + 1;
 /** While a send is in flight the row is leased for this long; a crash makes it due again. */
 export const LEASE_MINUTES = 5;
 
+/** A reminder row whose appointment was moved to another time since the row was made. */
+export const SKIP_APPOINTMENT_MOVED = "appointment_moved";
+
 export interface SmsOutboxRow {
   id: string;
   appointment_id: string;
@@ -35,6 +39,7 @@ export interface SmsOutboxRow {
   status: SmsStatus;
   attempts: number;
   next_attempt_at: string;
+  created_at: string;
 }
 
 export interface FinishPatch {
@@ -47,13 +52,18 @@ export interface FinishPatch {
   segments?: number | null;
 }
 
-export interface SmsRepo {
-  /** null when this appointment already has a message of this kind (idempotent). */
+export interface SmsRepo extends PhoneCounter {
+  /**
+   * null when the message already exists (idempotent): one per appointment and kind, and for
+   * reminders one per appointment and appointment time (forStartTime).
+   */
   insert(row: {
     appointmentId: string;
     /** Whose message this is (usage per business). */
     businessId?: string | null;
     kind: SmsKind;
+    /** Reminders only: the appointment start this reminder is for. */
+    forStartTime?: string | null;
     toPhone: string;
     status: SmsStatus;
     errorCode?: string;
@@ -65,6 +75,8 @@ export interface SmsRepo {
   finish(id: string, patch: FinishPatch): Promise<void>;
   setToken(id: string, hash: string, expiresAtIso: string): Promise<void>;
   getAppointment(appointmentId: string): Promise<Appointment | null>;
+  /** Reminders only: the appointment start the row was made for (null when unknown). */
+  getReminderStart(id: string): Promise<string | null>;
   /** The full business row. getAppointment embeds only a few business columns, not the settings. */
   getBusiness(businessId: string): Promise<Business | null>;
 }
@@ -79,31 +91,40 @@ const minutes = (n: number) => n * 60_000;
 
 // ------------------------------------------------------------------ enqueue
 
+/** The business as the rules see it: its id and slug (the demo ban) and its settings. */
+export type SmsBusiness = { id: string; slug?: string; settings?: BusinessSettings };
+
 /**
- * Writes the queue row for a new booking. Never throws. A missing configuration or an
- * unusable phone number is recorded as "skipped" with the reason, and the booking goes on.
+ * Writes the queue row for a message. Never throws. Anything that rules the message out (a demo
+ * business, the owner's switch, no 019 configuration, an unusable phone, a phone limit) is recorded
+ * as "skipped" with the reason, and the booking goes on.
  */
-export async function enqueueBookedSms(
+export async function enqueueSms(
   input: {
+    kind: SmsKind;
     appointmentId: string;
     phone: string;
-    /** The booked business, with its settings (the on/off switch). */
-    business?: { id: string; settings?: BusinessSettings } | null;
+    business?: SmsBusiness | null;
+    /** Reminders: the appointment start the reminder is for. */
+    forStartTime?: string | null;
   },
   repo: SmsRepo,
   ctx: SmsEnv = {}
 ): Promise<{ id: string; status: SmsStatus } | null> {
   try {
+    const now = (ctx.now ?? (() => new Date()))();
     const cfg = readSmsConfig(ctx.env);
     const phone = normalizeIsraeliMobile(input.phone);
     const siteOk = buildManageUrl("x", (ctx.env ?? process.env).NEXT_PUBLIC_SITE_URL) !== null;
 
     let status: SmsStatus = "pending";
     let reason: string | undefined;
-    if (!shouldSendSms(input.business, "booked")) {
-      // the owner switched the confirmation off: nothing is sent, and the row says why
+    const blocked = smsBlockReason(input.business, input.kind);
+    if (blocked) {
+      // A demo business, or the owner switched this message off: nothing is sent and the row says why.
+      // (Checked first: such a message never uses up any of the phone's limit.)
       status = "skipped";
-      reason = SKIP_BUSINESS_DISABLED;
+      reason = blocked;
     } else if (!cfg.ok) {
       status = "skipped";
       reason = cfg.reason;
@@ -113,12 +134,19 @@ export async function enqueueBookedSms(
     } else if (!siteOk) {
       status = "skipped";
       reason = "site_url_missing";
+    } else {
+      const limit = await phoneLimitHit(repo, phone.phone, now);
+      if (limit) {
+        status = "skipped";
+        reason = limit;
+      }
     }
 
     const row = await repo.insert({
       appointmentId: input.appointmentId,
       businessId: input.business?.id ?? null,
-      kind: "booked",
+      kind: input.kind,
+      forStartTime: input.forStartTime ?? null,
       toPhone: phone.ok ? phone.phone : input.phone.replace(/\D/g, "").slice(0, 20),
       status,
       errorCode: reason,
@@ -130,6 +158,15 @@ export async function enqueueBookedSms(
     console.error("sms enqueue failed:", err instanceof Error ? err.name : "unknown");
     return null;
   }
+}
+
+/** The booking confirmation. */
+export function enqueueBookedSms(
+  input: { appointmentId: string; phone: string; business?: SmsBusiness | null },
+  repo: SmsRepo,
+  ctx: SmsEnv = {}
+): Promise<{ id: string; status: SmsStatus } | null> {
+  return enqueueSms({ kind: "booked", ...input }, repo, ctx);
 }
 
 // ------------------------------------------------------------------ send one
@@ -152,7 +189,7 @@ export function planAfterFailure(
   return { status: "failed" };
 }
 
-/** Why a confirmation must not go out any more (checked right before every send). */
+/** Why a message must not go out any more (checked right before every send). */
 export function skipReason(appointment: Appointment | null, now: Date): string | null {
   if (!appointment) return "appointment_missing";
   if (appointment.status === "cancelled") return "appointment_cancelled";
@@ -174,17 +211,39 @@ export async function processSmsRow(id: string, repo: SmsRepo, ctx: SmsEnv = {})
       return "skipped";
     }
 
-    // The owner may have switched the SMS off after the row was queued (also between retries).
+    // The owner may have switched the message off after the row was queued (also between retries), and a
+    // demo business never sends anything, whatever the row says.
     // (The appointment only carries a few business columns; the settings need their own read.)
     const business = await repo.getBusiness(appointment!.business_id);
-    if (!shouldSendSms(business, claimed.kind)) {
-      await repo.finish(id, { status: "skipped", errorCode: SKIP_BUSINESS_DISABLED, errorMessage: SKIP_BUSINESS_DISABLED });
+    const blocked = smsBlockReason(business ?? appointment!.business, claimed.kind);
+    if (blocked) {
+      await repo.finish(id, { status: "skipped", errorCode: blocked, errorMessage: blocked });
       return "skipped";
+    }
+
+    // A reminder belongs to one appointment time: after a reschedule it is stale (the new time gets its own).
+    if (claimed.kind === "reminder") {
+      const forStart = await repo.getReminderStart(id);
+      if (!forStart || new Date(forStart).getTime() !== new Date(appointment!.start_time).getTime()) {
+        await repo.finish(id, { status: "skipped", errorCode: SKIP_APPOINTMENT_MOVED, errorMessage: SKIP_APPOINTMENT_MOVED });
+        return "skipped";
+      }
     }
 
     const cfg = readSmsConfig(ctx.env);
     if (!cfg.ok) {
       await repo.finish(id, { status: "skipped", errorCode: cfg.reason, errorMessage: cfg.reason });
+      return "skipped";
+    }
+
+    // The per-phone limits again, right before sending: only the messages queued ahead of this one count.
+    const limit = await phoneLimitHit(repo, claimed.to_phone, now(), {
+      excludeId: id,
+      createdUpToIso: claimed.created_at,
+    });
+    if (limit) {
+      console.warn(`sms skipped (${limit})`);
+      await repo.finish(id, { status: "skipped", errorCode: limit, errorMessage: limit });
       return "skipped";
     }
 
@@ -197,13 +256,17 @@ export async function processSmsRow(id: string, repo: SmsRepo, ctx: SmsEnv = {})
     }
     await repo.setToken(id, hashManageToken(token), appointment.end_time);
 
-    const rendered = renderBookedMessageDetailed(getSmsTemplate(business, claimed.kind), {
-      name: appointment.client?.first_name,
-      business: business?.name || appointment.business?.name || appointment.service?.name,
-      service: appointment.service?.name,
-      ...dateTimeVars(appointment.start_time),
-      link: manageUrl,
-    });
+    const rendered = renderSmsMessageDetailed(
+      claimed.kind === "reminder" ? "reminder" : "booked",
+      getSmsTemplate(business, claimed.kind),
+      {
+        name: appointment.client?.first_name,
+        business: business?.name || appointment.business?.name || appointment.service?.name,
+        service: appointment.service?.name,
+        ...dateTimeVars(appointment.start_time),
+        link: manageUrl,
+      }
+    );
     if (rendered.fellBack) {
       // the saved wording is unusable (old, edited by hand, ...): the default goes out; no customer data in the log
       console.warn(`sms template not usable, default wording used (${rendered.fallbackReason})`);

@@ -23,6 +23,8 @@ import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { BackupAndAlerts } from "@/components/admin/BackupAndAlerts";
 import { GoogleCalendarCard } from "@/components/admin/GoogleCalendarCard";
+import { ThemePicker } from "@/components/admin/ThemePicker";
+import { DEFAULT_THEME_ID, getTheme } from "@/lib/theme";
 import { triggerHaptic } from "@/lib/utils";
 import { alertDialog, confirmDialog } from "@/lib/dialogs";
 import { qrDataUrl } from "@/lib/qr";
@@ -146,6 +148,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
   const [logoUrl, setLogoUrl] = useState(business.settings?.logo_url || "");
   const [coverUrl, setCoverUrl] = useState(business.settings?.cover_image_url || "");
   const [ogUrl, setOgUrl] = useState(business.settings?.og_image_url || "");
+  const [themeColor, setThemeColor] = useState(getTheme(business.settings?.theme_color).id);
 
   // Smart controls state
   const [interval, setInterval] = useState(String(slotInterval || 15));
@@ -182,6 +185,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
     setLogoUrl(business.settings?.logo_url || "");
     setCoverUrl(business.settings?.cover_image_url || "");
     setOgUrl(business.settings?.og_image_url || "");
+    setThemeColor(getTheme(business.settings?.theme_color).id);
     setInterval(String(slotInterval || 15));
     setMinNotice(String(business.settings?.min_notice_hours ?? 1));
     setMaxFuture(String(business.settings?.max_future_days ?? 60));
@@ -260,6 +264,8 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
         logo_url: logoUrl.trim(),
         cover_image_url: coverUrl.trim(),
         og_image_url: ogUrl.trim(),
+        // the default look is stored as "nothing"
+        ...(themeColor !== DEFAULT_THEME_ID ? { theme_color: themeColor } : {}),
         min_notice_hours: Number(minNotice),
         max_future_days: Number(maxFuture),
         cancellation_cutoff_hours: Number(cancellationCutoff),
@@ -638,6 +644,9 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
                   </div>
                 </div>
               </div>
+
+              {/* The colour of the public booking and manage pages */}
+              <ThemePicker value={themeColor} onChange={setThemeColor} />
 
               {/* Custom Post-Booking Instructions / Notes for Clients */}
               <div className="sm:col-span-2 pt-4 border-t border-slate-100 space-y-2">

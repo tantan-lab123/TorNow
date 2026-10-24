@@ -27,6 +27,32 @@ export const SMS_VARIABLE_LABELS: Record<SmsVariable, string> = {
 /** Short on purpose: with a real manage link it fits in two SMS segments. */
 export const DEFAULT_BOOKED_TEMPLATE = "נקבע לך תור ל{business} ב-{date} בשעה {time}.\nלשינוי/ביטול: {link}";
 
+/** Reminder before the appointment. Also short enough for two segments with the real link. */
+export const DEFAULT_REMINDER_TEMPLATE = "תזכורת לתור ב{business}: {date} בשעה {time}.\nלשינוי/ביטול: {link}";
+
+/** The messages whose wording the owner can edit. */
+export type SmsTemplateKind = "booked" | "reminder";
+
+export function defaultTemplateFor(kind: SmsTemplateKind): string {
+  return kind === "reminder" ? DEFAULT_REMINDER_TEMPLATE : DEFAULT_BOOKED_TEMPLATE;
+}
+
+/** When the reminder goes out, in minutes before the appointment. 0 = never (the default). */
+export const SMS_REMINDER_OPTIONS: { minutes: number; label: string }[] = [
+  { minutes: 0, label: "אף פעם" },
+  { minutes: 15, label: "15 דקות" },
+  { minutes: 30, label: "30 דקות" },
+  { minutes: 60, label: "שעה" },
+  { minutes: 120, label: "שעתיים" },
+  { minutes: 1440, label: "יום לפני" },
+];
+
+/** A stored value that is not one of the options means "never". */
+export function normalizeReminderMinutes(v: unknown): number {
+  const n = typeof v === "number" ? v : typeof v === "string" && v.trim() !== "" ? Number(v) : NaN;
+  return SMS_REMINDER_OPTIONS.some((o) => o.minutes === n) ? n : 0;
+}
+
 /** Longest template the owner may save (before the variables are filled in). */
 export const SMS_TEMPLATE_MAX_RAW = 300;
 /** More than this many segments is only a warning ... */
@@ -150,9 +176,19 @@ export interface RenderedMessage {
  * has no {link}, and nothing ever shortens it.
  */
 export function renderBookedMessageDetailed(template: string | null | undefined, vars: SmsVars): RenderedMessage {
-  const wanted = typeof template === "string" && template.trim() !== "" ? template : null;
+  return renderSmsMessageDetailed("booked", template, vars);
+}
 
-  let chosen = DEFAULT_BOOKED_TEMPLATE;
+/** Same as above for any kind of message: each kind has its own default wording. */
+export function renderSmsMessageDetailed(
+  kind: SmsTemplateKind,
+  template: string | null | undefined,
+  vars: SmsVars
+): RenderedMessage {
+  const wanted = typeof template === "string" && template.trim() !== "" ? template : null;
+  const fallbackTemplate = defaultTemplateFor(kind);
+
+  let chosen = fallbackTemplate;
   let fellBack = false;
   let fallbackReason: string | undefined;
 
@@ -173,7 +209,7 @@ export function renderBookedMessageDetailed(template: string | null | undefined,
   if (!fellBack && wanted !== null && countSegments(text).segments > SMS_SEGMENTS_MAX) {
     fellBack = true;
     fallbackReason = "too_long_when_rendered";
-    text = renderTemplate(DEFAULT_BOOKED_TEMPLATE, vars);
+    text = renderTemplate(fallbackTemplate, vars);
   }
   return { text, fellBack, fallbackReason };
 }
@@ -262,4 +298,42 @@ export function previewVars(opts: { businessName?: string; siteUrl?: string; lin
     time: "15:30",
     link,
   };
+}
+
+// ------------------------------------------------------------------ what the settings screen shows
+
+export interface TemplateAnalysis {
+  check: TemplateCheck;
+  /** The message as it would go out, with example data (the default wording while the text is invalid). */
+  rendered: RenderedMessage;
+  info: SegmentInfo;
+  warn: boolean;
+  tooLong: boolean;
+  /** What stops the owner from saving, or null */
+  error: string | null;
+  /** The text is exactly the default wording (it is then saved as "no custom wording") */
+  isDefault: boolean;
+}
+
+/** Everything the editor shows about one wording: validity, live preview, length and segments. */
+export function analyzeTemplate(
+  kind: SmsTemplateKind,
+  text: string,
+  opts: { businessName?: string; siteUrl?: string } = {}
+): TemplateAnalysis {
+  const check = validateTemplate(text);
+  const rendered = renderSmsMessageDetailed(
+    kind,
+    check.ok ? check.template : defaultTemplateFor(kind),
+    previewVars({ businessName: opts.businessName, siteUrl: opts.siteUrl })
+  );
+  const info = countSegments(rendered.text);
+  const tooLong = info.segments > SMS_SEGMENTS_MAX;
+  const warn = info.segments > SMS_SEGMENTS_WARN && !tooLong;
+  const error = !check.ok
+    ? check.error
+    : tooLong
+      ? `ההודעה ארוכה מדי: ${info.segments} מקטעים (המקסימום ${SMS_SEGMENTS_MAX})`
+      : null;
+  return { check, rendered, info, warn, tooLong, error, isDefault: check.ok && check.template === defaultTemplateFor(kind) };
 }

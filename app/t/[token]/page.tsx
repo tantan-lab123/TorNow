@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { ManageAppointment } from "@/components/booking/ManageAppointment";
+import { ThemeScope } from "@/components/theme/ThemeScope";
+import { getBusinessById } from "@/lib/db";
 import { clientIpFromHeaders, rateLimit } from "@/lib/rateLimit";
 import { resolveManageToken } from "@/lib/sms/manage";
 
@@ -28,7 +30,14 @@ export default async function ManageByTokenPage({ params }: { params: Promise<{ 
   }
 
   // wrong, unknown and expired links all end in the same generic 404
-  if (!(await resolveManageToken(token))) notFound();
+  const appointment = await resolveManageToken(token);
+  if (!appointment) notFound();
 
-  return <ManageAppointment source={{ mode: "token", token }} />;
+  // the business's colour theme (only its id is read), set on the server: no flash of the default
+  const business = await getBusinessById(appointment.business_id);
+  return (
+    <ThemeScope themeId={business?.settings?.theme_color}>
+      <ManageAppointment source={{ mode: "token", token }} />
+    </ThemeScope>
+  );
 }

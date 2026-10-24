@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getBusinessBySlug } from "@/lib/db";
 import { createHash } from "node:crypto";
 import { dropLegacyPrefills } from "@/lib/validation";
+import { ThemeScope } from "@/components/theme/ThemeScope";
 import BookingPage from "./BookingPage";
 
 export const dynamic = "force-dynamic";
@@ -40,6 +41,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function Page({ params }: Props) {
   const { slug } = await params;
   // Unknown addresses (and paths like /robots.txt) get a real 404, not an empty booking page
-  if (!(await loadBusiness(slug))) notFound();
-  return <BookingPage />;
+  const business = await loadBusiness(slug);
+  if (!business) notFound();
+  // The business's colour theme, set on the server so the page never shows the default colour first
+  return (
+    <ThemeScope themeId={business.settings?.theme_color}>
+      <BookingPage />
+    </ThemeScope>
+  );
 }

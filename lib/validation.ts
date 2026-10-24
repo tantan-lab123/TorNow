@@ -1,5 +1,11 @@
 import type { BusinessSettings, DateOverride, DayOfWeek, WorkingHours } from "@/lib/types";
-import { checkWorstCaseLength, validateTemplate, type WorstCaseContext } from "@/lib/sms/message";
+import {
+  checkWorstCaseLength,
+  SMS_REMINDER_OPTIONS,
+  validateTemplate,
+  type WorstCaseContext,
+} from "@/lib/sms/message";
+import { isThemeColorId } from "@/lib/theme";
 
 const DAYS: DayOfWeek[] = [
   "sunday",
@@ -47,7 +53,12 @@ export const CALENDAR_REMINDER_CHOICES = [0, 10, 15, 30, 60, 120, 180, 1440];
 export const DEFAULT_CALENDAR_REMINDER_MINUTES = 60;
 
 /** The settings of the "messages" screen. Only that screen (and the server, below) writes them. */
-export const SMS_SETTING_KEYS = ["sms_confirmation_enabled", "sms_confirmation_template"] as const;
+export const SMS_SETTING_KEYS = [
+  "sms_confirmation_enabled",
+  "sms_confirmation_template",
+  "sms_reminder_minutes",
+  "sms_reminder_template",
+] as const;
 
 const hasKey = (raw: unknown, key: string) =>
   !!raw && typeof raw === "object" && Object.prototype.hasOwnProperty.call(raw, key);
@@ -56,7 +67,7 @@ const hasKey = (raw: unknown, key: string) =>
  * Settings are saved as a whole: what arrives replaces what was stored. The other screens
  * (general, controls, calendar) do not know the SMS settings and send none, so a key that is
  * MISSING from the incoming settings keeps its stored value. A key that is present wins, even
- * when empty or null (the way to go back to the default text); false is a real value.
+ * when empty or null (the way to go back to the default text); false and 0 are real values.
  */
 export function preserveMissingSmsSettings(
   rawIncoming: unknown,
@@ -71,24 +82,39 @@ export function preserveMissingSmsSettings(
   return out as BusinessSettings;
 }
 
+/** Why one wording (confirmation or reminder) is not acceptable, or null (empty / null = the default). */
+function templateError(value: unknown, ctx: WorstCaseContext): string | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== "string") return "נוסח ההודעה לא תקין";
+  if (value.trim() === "") return null;
+  const check = validateTemplate(value);
+  if (!check.ok) return check.error;
+  return checkWorstCaseLength(check.template, ctx);
+}
+
 /**
  * Clear error text for the SMS settings in an incoming settings object, or null when they are fine.
  * An empty / null template is fine (= the default wording). Called before saving; the sanitizer
  * below also drops an unusable template, so a bad one can never be stored.
  */
 export function smsSettingsError(rawSettings: unknown, ctx: WorstCaseContext): string | null {
+  const get = (key: string) => (rawSettings as Record<string, unknown>)[key];
   if (hasKey(rawSettings, "sms_confirmation_enabled")) {
-    const v = (rawSettings as Record<string, unknown>).sms_confirmation_enabled;
+    const v = get("sms_confirmation_enabled");
     if (v !== null && typeof v !== "boolean") return "ערך לא תקין למתג ה-SMS";
   }
+  if (hasKey(rawSettings, "sms_reminder_minutes")) {
+    const v = get("sms_reminder_minutes");
+    const valid = v === null || SMS_REMINDER_OPTIONS.some((o) => o.minutes === v);
+    if (!valid) return "זמן התזכורת לא תקין";
+  }
   if (hasKey(rawSettings, "sms_confirmation_template")) {
-    const v = (rawSettings as Record<string, unknown>).sms_confirmation_template;
-    if (v === null || v === undefined) return null;
-    if (typeof v !== "string") return "נוסח ההודעה לא תקין";
-    if (v.trim() === "") return null;
-    const check = validateTemplate(v);
-    if (!check.ok) return check.error;
-    return checkWorstCaseLength(check.template, ctx);
+    const err = templateError(get("sms_confirmation_template"), ctx);
+    if (err) return err;
+  }
+  if (hasKey(rawSettings, "sms_reminder_template")) {
+    const err = templateError(get("sms_reminder_template"), ctx);
+    if (err) return err;
   }
   return null;
 }
@@ -97,6 +123,12 @@ function smsTemplate(v: unknown): string | undefined {
   if (typeof v !== "string" || v.trim() === "") return undefined;
   const check = validateTemplate(v);
   return check.ok ? check.template : undefined;
+}
+
+/** One of the reminder options (0 = never is a real value), else dropped = never. */
+function reminderMinutes(v: unknown): number | undefined {
+  if (v === null || v === undefined) return undefined;
+  return SMS_REMINDER_OPTIONS.some((o) => o.minutes === v) ? (v as number) : undefined;
 }
 
 export function sanitizeSettings(raw: unknown): BusinessSettings {
@@ -128,6 +160,9 @@ export function sanitizeSettings(raw: unknown): BusinessSettings {
     paybox_payment_url: safeHttpUrl(r.paybox_payment_url),
     sms_confirmation_enabled: bool(r.sms_confirmation_enabled),
     sms_confirmation_template: smsTemplate(r.sms_confirmation_template),
+    sms_reminder_minutes: reminderMinutes(r.sms_reminder_minutes),
+    sms_reminder_template: smsTemplate(r.sms_reminder_template),
+    theme_color: isThemeColorId(r.theme_color) ? r.theme_color : undefined,
   };
   // drop undefined keys
   return Object.fromEntries(Object.entries(out).filter(([, v]) => v !== undefined)) as BusinessSettings;

@@ -4,19 +4,23 @@ import type { Config } from "tailwindcss";
 // Older screens were written with indigo/violet/slate class names. Those names are
 // mapped onto the brand palette below so every screen (and any new code that still
 // uses them) stays on brand. Prefer the brand / paper / ink names in new code.
+// The brand colours are CSS variables, so the public pages can wear the business's colour theme (see
+// lib/theme.ts). The defaults below (in app/globals.css) are the original bottle green, so everything
+// that does not set the variables looks exactly as it always did.
+const channel = (name: string) => `rgb(var(--${name}) / <alpha-value>)`;
 const brand = {
-  50: "#EFF4EE",
-  100: "#E1EBE2",
-  200: "#C9DCCD",
-  300: "#A3C2AB",
-  400: "#5E8F6C",
-  500: "#2F6B4B",
-  600: "#1E4D36",
-  700: "#163B29",
-  800: "#112E20",
-  900: "#0C2117",
-  950: "#08160F",
-  DEFAULT: "#1E4D36",
+  50: channel("brand-50"),
+  100: channel("brand-100"),
+  200: channel("brand-200"),
+  300: channel("brand-300"),
+  400: channel("brand-400"),
+  500: channel("brand-500"),
+  600: channel("brand-600"),
+  700: channel("brand-700"),
+  800: channel("brand-800"),
+  900: channel("brand-900"),
+  950: channel("brand-950"),
+  DEFAULT: channel("brand-600"),
 };
 
 // Warm neutrals: paper backgrounds, linen lines and green-black ink.
@@ -97,7 +101,7 @@ const config: Config = {
         pending,
         danger,
         paper: { DEFAULT: "#F4F1E8", surface: "#FFFDF9", line: "#E2DDCF" },
-        lime: { DEFAULT: "#CFEA6E", ink: "#1A2E12", edge: "#B8D458", soft: "#EEF7CF" },
+        lime: { DEFAULT: channel("lime"), ink: channel("lime-ink"), edge: channel("lime-edge"), soft: channel("lime-soft") },
         staff: { d: "#2F6B4B", y: "#7A3B69", m: "#B4532A" },
         white: "#FFFDF9",
         primary: {

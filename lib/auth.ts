@@ -203,6 +203,8 @@ export function toPublicBusiness(b: Business): Business {
     // the SMS switch and wording are the owner's business, not the booking page's
     delete publicSettings.sms_confirmation_enabled;
     delete publicSettings.sms_confirmation_template;
+    delete publicSettings.sms_reminder_minutes;
+    delete publicSettings.sms_reminder_template;
   }
   return { ...rest, settings: publicSettings } as Business;
 }

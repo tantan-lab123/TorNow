@@ -80,6 +80,12 @@ export interface BusinessSettings {
   sms_confirmation_enabled?: boolean;
   /** Wording of that SMS (variables like {name}, {link}). Missing or empty = the system default. Never public. */
   sms_confirmation_template?: string;
+  /** Reminder SMS before the appointment, in minutes: 0 (never, the default), 15, 30, 60, 120 or 1440 (a day before). Never public. */
+  sms_reminder_minutes?: number;
+  /** Wording of the reminder (same variables as the confirmation). Missing or empty = the system default. Never public. */
+  sms_reminder_template?: string;
+  /** Colour theme of the public booking and manage pages: an id from lib/theme.ts (missing = forest). Public. */
+  theme_color?: string;
 }
 
 export interface Service {
