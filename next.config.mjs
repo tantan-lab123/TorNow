@@ -14,6 +14,13 @@ const privateLinkHeaders = [
   { key: "X-Robots-Tag", value: "noindex, nofollow" },
 ];
 
+// The operator dashboard: never indexed, never cached, never leaked through the Referer header.
+const superadminHeaders = [
+  { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+  { key: "Cache-Control", value: "no-store" },
+  { key: "Referrer-Policy", value: "no-referrer" },
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
@@ -34,6 +41,9 @@ const nextConfig = {
       { source: "/:path*", headers: securityHeaders },
       { source: "/t/:path*", headers: privateLinkHeaders },
       { source: "/api/manage/:path*", headers: privateLinkHeaders },
+      { source: "/superadmin", headers: superadminHeaders },
+      { source: "/superadmin/:path*", headers: superadminHeaders },
+      { source: "/api/superadmin/:path*", headers: superadminHeaders },
     ];
   },
 };
