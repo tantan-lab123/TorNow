@@ -71,6 +71,8 @@ export interface RollupRow {
   month_manual: number;
   sms_sent_30d: number;
   sms_segments_30d: number;
+  /** messages billed for the sent ones (a sent row without a stored number counts 1) */
+  sms_billed_30d: number;
   sms_failed_30d: number;
 }
 
@@ -81,8 +83,10 @@ export interface SeriesRow {
   status: string;
   reason: string | null;
   n: number;
-  /** segments of the SENT messages in the group */
+  /** carrier segments of the SENT messages in the group (technical) */
   segments: number;
+  /** messages billed for the SENT messages in the group; 0 for other statuses */
+  billed: number;
   /** sent messages in the group with a delivery report */
   delivered: number;
 }
@@ -131,6 +135,9 @@ export interface SmsDay {
   booked: number;
   reminder: number;
   other: number;
+  /** messages billed (the main number) */
+  billed: number;
+  /** carrier segments (secondary, technical) */
   segments: number;
 }
 
@@ -139,9 +146,10 @@ export interface SmsMonth {
   booked: number;
   reminder: number;
   other: number;
+  billed: number;
   segments: number;
-  /** agorot, null when no price is configured */
-  costAgorot: number | null;
+  /** shekels (billed x price, not rounded), null when no price is configured */
+  costIls: number | null;
 }
 
 export interface BusinessLine {
@@ -151,6 +159,7 @@ export interface BusinessLine {
   isDemo: boolean;
   appts30d: number;
   smsSent30d: number;
+  billed30d: number;
   segments30d: number;
   smsFailed30d: number;
   lastAppointmentAt: string | null;
@@ -187,12 +196,15 @@ export interface Metrics {
     skipReasons30d: { reason: string; n: number }[];
     failedReasons30d: { reason: string; n: number }[];
     delivery30d: { sent: number; delivered: number; rate: number | null };
+    billed: { last30d: number; thisMonth: number };
     segments: { last30d: number; thisMonth: number };
     cost: {
       priceConfigured: boolean;
-      priceAgorot: number | null;
-      last30dAgorot: number | null;
-      thisMonthAgorot: number | null;
+      /** shekels per billed message */
+      priceIls: number | null;
+      /** shekels, not rounded: the screen rounds for display */
+      last30dIls: number | null;
+      thisMonthIls: number | null;
     };
   };
   businesses: { rows: BusinessLine[]; total: number; truncated: boolean };
@@ -224,12 +236,14 @@ export function pct(part: number, whole: number): number | null {
   return Math.round((part / whole) * 1000) / 10;
 }
 
-/** SMS_SEGMENT_PRICE_AGOROT: whole agorot per segment. Anything else (or unset) = not configured. */
-export function parsePriceAgorot(raw: string | undefined | null): number | null {
+/**
+ * SMS_MESSAGE_PRICE_ILS: shekels per BILLED message, a decimal with a point (0.009). Number() of it must be
+ * finite and above 0; anything else (unset, empty, "abc", "0", "-1", and "0,009" with a comma: not guessed) = not configured.
+ */
+export function parsePriceIls(raw: string | undefined | null): number | null {
   if (typeof raw !== "string") return null;
-  const t = raw.trim();
-  if (!/^\d{1,6}$/.test(t)) return null;
-  return Number(t);
+  const n = Number(raw.trim());
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 const groupBy = <T,>(items: T[], key: (t: T) => string): Map<string, T[]> => {
@@ -308,7 +322,7 @@ export async function buildMetrics(source: MetricsSource, { now, env }: BuildOpt
   const dayKeys = lastDayKeys(now, 30);
   const monthKeys = lastMonthKeys(now, 6);
   const dayIndex = new Set(dayKeys);
-  const price = parsePriceAgorot(env.SMS_SEGMENT_PRICE_AGOROT);
+  const price = parsePriceIls(env.SMS_MESSAGE_PRICE_ILS);
   const kindOf = (k: string): "booked" | "reminder" | "other" => (k === "booked" ? "booked" : k === "reminder" ? "reminder" : "other");
 
   const sentRows = series.filter((s) => s.status === "sent");
@@ -316,20 +330,28 @@ export async function buildMetrics(source: MetricsSource, { now, env }: BuildOpt
   const daily: SmsDay[] = dayKeys.map((day) => {
     const rows = byDay.get(day) ?? [];
     const of = (kind: string) => sum(rows.filter((s) => kindOf(s.kind) === kind).map((s) => s.n));
-    return { day, booked: of("booked"), reminder: of("reminder"), other: of("other"), segments: sum(rows.map((s) => s.segments)) };
+    return {
+      day,
+      booked: of("booked"),
+      reminder: of("reminder"),
+      other: of("other"),
+      billed: sum(rows.map((s) => s.billed)),
+      segments: sum(rows.map((s) => s.segments)),
+    };
   });
   const byMonth = groupBy(sentRows, (s) => s.local_day.slice(0, 7));
   const monthly: SmsMonth[] = monthKeys.map((month) => {
     const rows = byMonth.get(month) ?? [];
     const of = (kind: string) => sum(rows.filter((s) => kindOf(s.kind) === kind).map((s) => s.n));
-    const segments = sum(rows.map((s) => s.segments));
+    const billed = sum(rows.map((s) => s.billed));
     return {
       month,
       booked: of("booked"),
       reminder: of("reminder"),
       other: of("other"),
-      segments,
-      costAgorot: price === null ? null : segments * price,
+      billed,
+      segments: sum(rows.map((s) => s.segments)),
+      costIls: price === null ? null : billed * price,
     };
   });
 
@@ -343,6 +365,7 @@ export async function buildMetrics(source: MetricsSource, { now, env }: BuildOpt
   const sent30 = statusCount("sent");
   const delivered30 = sum(last30.filter((s) => s.status === "sent").map((s) => s.delivered));
   const segments30 = sum(last30.filter((s) => s.status === "sent").map((s) => s.segments));
+  const billed30 = sum(last30.filter((s) => s.status === "sent").map((s) => s.billed));
   const thisMonth = monthly[monthly.length - 1];
 
   // ---- the table
@@ -354,11 +377,12 @@ export async function buildMetrics(source: MetricsSource, { now, env }: BuildOpt
       isDemo,
       appts30d: r.appts_30d,
       smsSent30d: r.sms_sent_30d,
+      billed30d: r.sms_billed_30d,
       segments30d: r.sms_segments_30d,
       smsFailed30d: r.sms_failed_30d,
       lastAppointmentAt: r.last_appointment_at,
     }))
-    .sort((a, b) => b.appts30d - a.appts30d || b.smsSent30d - a.smsSent30d || a.name.localeCompare(b.name, "he"));
+    .sort((a, b) => b.appts30d - a.appts30d || b.billed30d - a.billed30d || a.name.localeCompare(b.name, "he"));
 
   // ---- health
   const minutesAgo = heartbeat ? Math.max(0, Math.floor((now.getTime() - t(heartbeat.last_run_at)) / 60_000)) : null;
@@ -411,12 +435,13 @@ export async function buildMetrics(source: MetricsSource, { now, env }: BuildOpt
       skipReasons30d: reasonsOf("skipped"),
       failedReasons30d: reasonsOf("failed"),
       delivery30d: { sent: sent30, delivered: delivered30, rate: pct(delivered30, sent30) },
+      billed: { last30d: billed30, thisMonth: thisMonth?.billed ?? 0 },
       segments: { last30d: segments30, thisMonth: thisMonth?.segments ?? 0 },
       cost: {
         priceConfigured: price !== null,
-        priceAgorot: price,
-        last30dAgorot: price === null ? null : segments30 * price,
-        thisMonthAgorot: price === null ? null : (thisMonth?.segments ?? 0) * price,
+        priceIls: price,
+        last30dIls: price === null ? null : billed30 * price,
+        thisMonthIls: price === null ? null : (thisMonth?.billed ?? 0) * price,
       },
     },
     businesses: { rows: tableAll.slice(0, MAX_TABLE_ROWS), total: tableAll.length, truncated: tableAll.length > MAX_TABLE_ROWS },

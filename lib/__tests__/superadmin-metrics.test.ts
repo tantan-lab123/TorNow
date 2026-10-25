@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { createMemorySource } from "@/lib/superadmin/memory-source";
-import { buildMetrics, parsePriceAgorot, pct, windowsFor } from "@/lib/superadmin/metrics";
+import { buildMetrics, parsePriceIls, pct, windowsFor } from "@/lib/superadmin/metrics";
 import {
   dayKey,
   israelDayStart,
@@ -10,6 +10,7 @@ import {
   lastMonthKeys,
   monthKey,
 } from "@/lib/superadmin/time";
+import { formatPriceIls, formatTotalIls } from "@/components/superadmin/format";
 import { MANUAL_BOOKING_NOTE } from "@/lib/superadmin/config";
 import { DAY, ENV_ALL, NOW, addAppointment, addBusiness, addSms, ago, emptyData } from "./helpers/superadmin-fakes";
 
@@ -343,7 +344,7 @@ describe("sms", () => {
     expect((await build(emptyData())).sms.delivery30d.rate).toBeNull();
   });
 
-  it("segments: the sum over sent messages; a missing count (an old row) is 0", async () => {
+  it("segments (secondary): the sum over sent messages; a missing count (an old row) is 0", async () => {
     const d = emptyData();
     addBusiness(d, "a");
     addSms(d, "a", { segments: 2 });
@@ -353,39 +354,115 @@ describe("sms", () => {
     expect(m.sms.segments).toEqual({ last30d: 5, thisMonth: 5 });
   });
 
-  describe("estimated cost", () => {
-    const withSegments = () => {
+  describe("billed messages (the main number)", () => {
+    it("the sum of the stored numbers over SENT rows; a sent row without one counts 1", async () => {
       const d = emptyData();
       addBusiness(d, "a");
-      addSms(d, "a", { segments: 4 });
-      addSms(d, "a", { segments: 6 });
+      addSms(d, "a", { billed: 2 });
+      addSms(d, "a", { billed: 3 });
+      addSms(d, "a", { billed: null }); // sent before the column existed
+      const m = await build(d);
+      expect(m.sms.billed).toEqual({ last30d: 6, thisMonth: 6 });
+    });
+
+    it("failed, skipped and pending rows count 0, even if a number was stored on them", async () => {
+      const d = emptyData();
+      addBusiness(d, "a");
+      addSms(d, "a", { status: "failed", reason: "4", segments: null, billed: 3 });
+      addSms(d, "a", { status: "skipped", reason: "phone_limit_day", segments: null, billed: 2 });
+      addSms(d, "a", { status: "skipped", reason: "business_disabled", segments: null });
+      addSms(d, "a", { status: "pending", segments: null });
+      addSms(d, "a", { billed: 1, created: "2026-11-05T08:00:00Z" });
+      const m = await build(d);
+      expect(m.sms.billed).toEqual({ last30d: 1, thisMonth: 1 });
+      expect(m.sms.daily[29].billed).toBe(1);
+    });
+
+    it("per day, per month and per business; segments stay a separate number", async () => {
+      const d = emptyData();
+      addBusiness(d, "a");
+      addBusiness(d, "b");
+      addSms(d, "a", { created: "2026-11-05T08:00:00Z", billed: 2, segments: 6 });
+      addSms(d, "b", { created: "2026-11-05T09:00:00Z", billed: 1, segments: 2 });
+      addSms(d, "a", { created: "2026-11-04T09:00:00Z", billed: 1, segments: 3 });
+      addSms(d, "a", { created: "2026-09-15T09:00:00Z", billed: 4, segments: 9 });
+      const m = await build(d);
+      expect(m.sms.daily[29]).toMatchObject({ day: "2026-11-05", billed: 3, segments: 8 });
+      expect(m.sms.daily[28]).toMatchObject({ day: "2026-11-04", billed: 1, segments: 3 });
+      expect(m.sms.monthly[5]).toMatchObject({ month: "2026-11", billed: 4, segments: 11 });
+      expect(m.sms.monthly[3]).toMatchObject({ month: "2026-09", billed: 4 });
+      const rows = m.businesses.rows;
+      expect(rows.find((r) => r.slug === "biz-a")).toMatchObject({ billed30d: 3, segments30d: 9, smsSent30d: 2 });
+      expect(rows.find((r) => r.slug === "biz-b")).toMatchObject({ billed30d: 1, smsSent30d: 1 });
+    });
+
+    it("demo businesses are left out of the billed numbers", async () => {
+      const d = emptyData();
+      addBusiness(d, "real");
+      addBusiness(d, "a1111111-1111-1111-1111-111111111111", { slug: "barber-dan" });
+      addSms(d, "real", { billed: 2 });
+      addSms(d, "a1111111-1111-1111-1111-111111111111", { billed: 5 });
+      const m = await build(d);
+      expect(m.sms.billed).toEqual({ last30d: 2, thisMonth: 2 });
+    });
+  });
+
+  describe("estimated cost", () => {
+    const withBilled = () => {
+      const d = emptyData();
+      addBusiness(d, "a");
+      addSms(d, "a", { billed: 400, segments: 1200 });
+      addSms(d, "a", { billed: 600, segments: 1800 });
       return d;
     };
 
-    it("segments x the price from SMS_SEGMENT_PRICE_AGOROT", async () => {
-      const m = await build(withSegments(), { ...ENV_ALL, SMS_SEGMENT_PRICE_AGOROT: "12" });
-      expect(m.sms.cost).toEqual({ priceConfigured: true, priceAgorot: 12, last30dAgorot: 120, thisMonthAgorot: 120 });
-      expect(m.sms.monthly[5].costAgorot).toBe(120);
+    it("billed messages x SMS_MESSAGE_PRICE_ILS: 0.009 x 1000 = 9.00", async () => {
+      const m = await build(withBilled(), { ...ENV_ALL, SMS_MESSAGE_PRICE_ILS: "0.009" });
+      expect(m.sms.cost.priceConfigured).toBe(true);
+      expect(m.sms.cost.priceIls).toBe(0.009);
+      expect(m.sms.cost.last30dIls).toBeCloseTo(9, 10);
+      expect(m.sms.cost.thisMonthIls).toBeCloseTo(9, 10);
+      expect(m.sms.monthly[5].costIls).toBeCloseTo(9, 10);
+      // the cost follows the billed messages, not the segments
+      expect(m.sms.segments.last30d).toBe(3000);
     });
 
-    it("without the price: segments only, no invented price", async () => {
-      const m = await build(withSegments(), ENV_ALL);
-      expect(m.sms.cost).toEqual({ priceConfigured: false, priceAgorot: null, last30dAgorot: null, thisMonthAgorot: null });
-      expect(m.sms.monthly.every((x) => x.costAgorot === null)).toBe(true);
-      expect(m.sms.segments.last30d).toBe(10);
+    it("displayed: totals with 2 decimals, the unit price with 3", () => {
+      expect(formatTotalIls(1000 * 0.009)).toMatch(/9[.,]00/);
+      expect(formatPriceIls(0.009)).toMatch(/0[.,]009/);
+      expect(formatTotalIls(0.004)).toMatch(/0[.,]00/);
+      expect(formatTotalIls(1234.5678)).toMatch(/1,234[.,]57/);
     });
 
-    it.each(["", "abc", "-5", "1.5", "12 ", "1e3", "9999999", " "])("a price that is not whole agorot (%j) counts as not set", async (raw) => {
-      const m = await build(withSegments(), { ...ENV_ALL, SMS_SEGMENT_PRICE_AGOROT: raw });
-      if (raw.trim() === "12") return; // "12 " trims to a valid 12
+    it("without the price: counts only, no invented price", async () => {
+      const m = await build(withBilled(), ENV_ALL);
+      expect(m.sms.cost).toEqual({ priceConfigured: false, priceIls: null, last30dIls: null, thisMonthIls: null });
+      expect(m.sms.monthly.every((x) => x.costIls === null)).toBe(true);
+      expect(m.sms.billed.last30d).toBe(1000);
+    });
+
+    it.each(["", "abc", "0", "-0.5", "0,009", " ", "Infinity", "NaN"])("a price that is not a positive decimal (%j) counts as not set", async (raw) => {
+      const m = await build(withBilled(), { ...ENV_ALL, SMS_MESSAGE_PRICE_ILS: raw });
       expect(m.sms.cost.priceConfigured).toBe(false);
+      expect(m.sms.cost.last30dIls).toBeNull();
     });
 
-    it("parsePriceAgorot", () => {
-      expect(parsePriceAgorot("0")).toBe(0);
-      expect(parsePriceAgorot(" 25 ")).toBe(25);
-      expect(parsePriceAgorot(undefined)).toBeNull();
-      expect(parsePriceAgorot("2.5")).toBeNull();
+    it("parsePriceIls", () => {
+      expect(parsePriceIls("0.009")).toBe(0.009);
+      expect(parsePriceIls(" 0.05 ")).toBe(0.05);
+      expect(parsePriceIls("1")).toBe(1);
+      expect(parsePriceIls("0,009")).toBeNull(); // a comma decimal is not guessed
+      expect(parsePriceIls("abc")).toBeNull();
+      expect(parsePriceIls("0")).toBeNull();
+      expect(parsePriceIls("-1")).toBeNull();
+      expect(parsePriceIls("")).toBeNull();
+      expect(parsePriceIls(undefined)).toBeNull();
+    });
+
+    it("no agorot anywhere in the dashboard code", () => {
+      for (const f of ["lib/superadmin/metrics.ts", "components/superadmin/Dashboard.tsx", "components/superadmin/format.ts"]) {
+        expect(readFileSync(f, "utf8"), f).not.toMatch(/agorot/i);
+      }
     });
   });
 });
@@ -402,7 +479,7 @@ describe("the businesses table", () => {
     addBusiness(d, "quiet", { name: "עסק שקט", created: ago(100 * DAY) });
     const rows = (await build(d)).businesses.rows;
     expect(rows.map((r) => r.name)).toEqual(["עסק עמוס", "עסק שקט"]);
-    expect(rows[0]).toMatchObject({ appts30d: 3, smsSent30d: 2, segments30d: 5, smsFailed30d: 1, isDemo: false });
+    expect(rows[0]).toMatchObject({ appts30d: 3, smsSent30d: 2, billed30d: 2, segments30d: 5, smsFailed30d: 1, isDemo: false });
     expect(rows[0].lastAppointmentAt).toBe(ago(1 * DAY));
     expect(rows[1]).toMatchObject({ appts30d: 0, lastAppointmentAt: null });
   });

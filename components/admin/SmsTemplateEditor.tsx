@@ -4,7 +4,6 @@ import React, { useRef } from "react";
 import { MessageSquare, RotateCcw } from "lucide-react";
 import {
   SMS_SEGMENTS_MAX,
-  SMS_SEGMENTS_WARN,
   SMS_TEMPLATE_MAX_RAW,
   SMS_VARIABLES,
   SMS_VARIABLE_LABELS,
@@ -33,7 +32,7 @@ interface SmsTemplateEditorProps {
  */
 export function SmsTemplateEditor({ id, kind, label, value, onChange, analysis, disabled }: SmsTemplateEditorProps) {
   const areaRef = useRef<HTMLTextAreaElement>(null);
-  const { info, warn, tooLong, error, rendered } = analysis;
+  const { info, worst, warn, tooLong, error, rendered } = analysis;
   const defaultText = defaultTemplateFor(kind);
 
   const insertVariable = (v: SmsVariable) => {
@@ -122,10 +121,14 @@ export function SmsTemplateEditor({ id, kind, label, value, onChange, analysis, 
             tooLong ? "bg-danger-50 text-danger-700" : warn ? "bg-amber-50 text-amber-900" : "bg-slate-50 text-ink-700"
           }`}
         >
-          {info.length} תווים · {info.segments} {info.segments === 1 ? "מקטע SMS" : "מקטעי SMS"}
-          {info.unicode ? " (עברית: 70 תווים להודעה, 67 לכל מקטע בהודעה ארוכה)" : ""}
-          {warn && ` · הודעה של יותר מ-${SMS_SEGMENTS_WARN} מקטעים עולה יותר`}
-          {tooLong && ` · מעל ${SMS_SEGMENTS_MAX} מקטעים אי אפשר לשמור`}
+          <div>
+            {info.length} תווים בדוגמה · עד {worst.length} תווים במקרה הארוך ביותר
+          </div>
+          <div>
+            {worst.billed <= 1 ? "הודעה אחת" : `ההודעה תיספר כ-${worst.billed} הודעות`}
+            {warn && " · הודעה ארוכה עולה יותר. קצרו את הנוסח כדי שתיספר כהודעה אחת"}
+            {tooLong && ` · מעל ${SMS_SEGMENTS_MAX} מקטעים אי אפשר לשמור`}
+          </div>
         </div>
       </div>
     </div>

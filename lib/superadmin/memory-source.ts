@@ -6,7 +6,7 @@ import { dayKey } from "@/lib/superadmin/time";
 /**
  * The same counting as the SQL functions, over data held in memory. Used by the tests (as the fake database)
  * and by local development without Supabase. Keep it in step with the SQL in
- * supabase/migrations/20261026000001_superadmin_metrics.sql.
+ * supabase/migrations/20261026000001_superadmin_metrics.sql and 20261026000002_sms_billed_messages.sql.
  */
 
 export interface MemoryData {
@@ -26,6 +26,8 @@ export interface MemoryData {
     status: string;
     last_error_code: string | null;
     segments: number | null;
+    /** null on a sent row (an old one) counts 1, like the SQL */
+    billed_messages?: number | null;
     delivered_at: string | null;
     created_at: string;
     next_attempt_at: string;
@@ -72,6 +74,7 @@ export function createMemorySource(data: MemoryData): MetricsSource {
             month_manual: appts.filter((a) => at(a) >= month && isManual(a)).length,
             sms_sent_30d: sms30.filter((o) => o.status === "sent").length,
             sms_segments_30d: sms30.filter((o) => o.status === "sent").reduce((n, o) => n + (o.segments ?? 0), 0),
+            sms_billed_30d: sms30.filter((o) => o.status === "sent").reduce((n, o) => n + (o.billed_messages ?? 1), 0),
             sms_failed_30d: sms30.filter((o) => o.status === "failed").length,
           };
         });
@@ -87,10 +90,11 @@ export function createMemorySource(data: MemoryData): MetricsSource {
         const reason = o.status === "skipped" || o.status === "failed" ? o.last_error_code : null;
         const local_day = dayKey(new Date(o.created_at));
         const key = [local_day, o.kind, o.status, reason ?? ""].join("|");
-        const g = groups.get(key) ?? { local_day, kind: o.kind, status: o.status, reason, n: 0, segments: 0, delivered: 0 };
+        const g = groups.get(key) ?? { local_day, kind: o.kind, status: o.status, reason, n: 0, segments: 0, billed: 0, delivered: 0 };
         g.n += 1;
         if (o.status === "sent") {
           g.segments += o.segments ?? 0;
+          g.billed += o.billed_messages ?? 1;
           if (o.delivered_at) g.delivered += 1;
         }
         groups.set(key, g);

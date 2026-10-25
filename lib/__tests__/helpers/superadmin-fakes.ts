@@ -56,6 +56,8 @@ export function addSms(
     status?: string;
     reason?: string | null;
     segments?: number | null;
+    /** omitted = no stored number (a row sent before the column existed): counts as 1 billed message */
+    billed?: number | null;
     delivered?: boolean;
     created?: string;
     nextAttempt?: string;
@@ -69,6 +71,7 @@ export function addSms(
     status: over.status ?? "sent",
     last_error_code: over.reason ?? null,
     segments: over.segments === undefined ? 2 : over.segments,
+    billed_messages: over.billed ?? null,
     delivered_at: over.delivered ? created : null,
     created_at: created,
     next_attempt_at: over.nextAttempt ?? created,

@@ -2,7 +2,7 @@ import React from "react";
 import type { Metrics, PeriodCount, SmsDay, SmsMonth } from "@/lib/superadmin/metrics";
 import { BusinessTable } from "@/components/superadmin/BusinessTable";
 import { LogoutButton, RefreshButton } from "@/components/superadmin/Controls";
-import { formatAgorot, formatDateTime, formatNumber, formatPct, reasonLabel } from "@/components/superadmin/format";
+import { formatDateTime, formatNumber, formatPct, formatPriceIls, formatTotalIls, reasonLabel } from "@/components/superadmin/format";
 import { cn } from "@/lib/utils";
 
 const card = "rounded-xl border border-ink-200 bg-white p-5";
@@ -42,6 +42,10 @@ interface Bar {
   booked: number;
   reminder: number;
   other: number;
+  /** messages billed that day / month */
+  billed: number;
+  /** carrier segments (technical) */
+  segments: number;
 }
 
 function StackedBars({ title, bars, unit }: { title: string; bars: Bar[]; unit: string }) {
@@ -51,13 +55,14 @@ function StackedBars({ title, bars, unit }: { title: string; bars: Bar[]; unit: 
   const bw = Math.max(2, step * 0.7);
   const max = Math.max(1, ...bars.map((b) => b.booked + b.reminder + b.other));
   const total = bars.reduce((n, b) => n + b.booked + b.reminder + b.other, 0);
+  const totalBilled = bars.reduce((n, b) => n + b.billed, 0);
   return (
     <figure className={card}>
       <figcaption className="text-[16px] font-bold">{title}</figcaption>
       <svg
         viewBox={`0 0 ${W} ${H + 4}`}
         role="img"
-        aria-label={`${title}: ${formatNumber(total)} ${unit} בסך הכול`}
+        aria-label={`${title}: ${formatNumber(total)} ${unit} בסך הכול, ${formatNumber(totalBilled)} הודעות לחיוב`}
         className="mt-3 h-auto w-full"
         preserveAspectRatio="none"
       >
@@ -93,6 +98,8 @@ function StackedBars({ title, bars, unit }: { title: string; bars: Bar[]; unit: 
                 <th scope="col" className="py-1.5 pl-3 font-bold">אישורים</th>
                 <th scope="col" className="py-1.5 pl-3 font-bold">תזכורות</th>
                 <th scope="col" className="py-1.5 pl-3 font-bold">אחר</th>
+                <th scope="col" className="py-1.5 pl-3 font-bold">הודעות לחיוב</th>
+                <th scope="col" className="py-1.5 pl-3 font-normal text-ink-600">מקטעים</th>
               </tr>
             </thead>
             <tbody>
@@ -104,6 +111,8 @@ function StackedBars({ title, bars, unit }: { title: string; bars: Bar[]; unit: 
                   <td className="py-1.5 pl-3 tabular-nums">{b.booked}</td>
                   <td className="py-1.5 pl-3 tabular-nums">{b.reminder}</td>
                   <td className="py-1.5 pl-3 tabular-nums">{b.other}</td>
+                  <td className="py-1.5 pl-3 font-bold tabular-nums">{b.billed}</td>
+                  <td className="py-1.5 pl-3 tabular-nums text-ink-600">{b.segments}</td>
                 </tr>
               ))}
             </tbody>
@@ -123,8 +132,10 @@ function Legend({ color, label }: { color: string; label: string }) {
   );
 }
 
-const dayBars = (days: SmsDay[]): Bar[] => days.map((d) => ({ label: d.day, booked: d.booked, reminder: d.reminder, other: d.other }));
-const monthBars = (months: SmsMonth[]): Bar[] => months.map((m) => ({ label: m.month, booked: m.booked, reminder: m.reminder, other: m.other }));
+const dayBars = (days: SmsDay[]): Bar[] =>
+  days.map((d) => ({ label: d.day, booked: d.booked, reminder: d.reminder, other: d.other, billed: d.billed, segments: d.segments }));
+const monthBars = (months: SmsMonth[]): Bar[] =>
+  months.map((m) => ({ label: m.month, booked: m.booked, reminder: m.reminder, other: m.other, billed: m.billed, segments: m.segments }));
 
 // ------------------------------------------------------------------ the page
 
@@ -205,13 +216,22 @@ export function Dashboard({ metrics }: { metrics: Metrics }) {
       <Section id="sms" title="SMS">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Stat label="נשלחו (30 יום)" value={formatNumber(sms.status30d.sent)} hint={`מתוכם הגיעו ליעד: ${formatPct(sms.delivery30d.rate)}`} />
-          <Stat label="מקטעים (30 יום)" value={formatNumber(sms.segments.last30d)} hint={`החודש: ${formatNumber(sms.segments.thisMonth)}`} />
+          <Stat
+            label="הודעות לחיוב (30 יום)"
+            value={formatNumber(sms.billed.last30d)}
+            hint={
+              <>
+                החודש: {formatNumber(sms.billed.thisMonth)}
+                <span className="block text-ink-600">מקטעים: {formatNumber(sms.segments.last30d)} (החודש: {formatNumber(sms.segments.thisMonth)})</span>
+              </>
+            }
+          />
           <Stat
             label="עלות משוערת (30 יום)"
-            value={sms.cost.last30dAgorot === null ? "—" : formatAgorot(sms.cost.last30dAgorot)}
+            value={sms.cost.last30dIls === null ? "—" : formatTotalIls(sms.cost.last30dIls)}
             hint={
               sms.cost.priceConfigured
-                ? `החודש: ${formatAgorot(sms.cost.thisMonthAgorot ?? 0)} (מקטעים × מחיר)`
+                ? `החודש: ${formatTotalIls(sms.cost.thisMonthIls ?? 0)} (הודעות לחיוב × ${formatPriceIls(sms.cost.priceIls ?? 0)})`
                 : "מחיר להודעה לא הוגדר"
             }
           />
@@ -230,15 +250,15 @@ export function Dashboard({ metrics }: { metrics: Metrics }) {
           <ReasonList title="למה נכשלו (30 יום)" items={sms.failedReasons30d} />
         </div>
         {!sms.cost.priceConfigured && (
-          <p className="mt-3 text-[13px] text-ink-700">מחיר להודעה לא הוגדר: מוצגים מקטעים בלבד. אפשר להגדיר SMS_SEGMENT_PRICE_AGOROT (אגורות למקטע).</p>
+          <p className="mt-3 text-[13px] text-ink-700">מחיר להודעה לא הוגדר: מוצגת ספירה בלבד. אפשר להגדיר SMS_MESSAGE_PRICE_ILS (שקלים להודעה לחיוב, למשל 0.009).</p>
         )}
-        {sms.monthly.some((m) => m.costAgorot !== null) && (
+        {sms.monthly.some((m) => m.costIls !== null) && (
           <div className="mt-3 text-[13px] text-ink-700">
             <p className="font-semibold">עלות משוערת לפי חודש:</p>
             <ul className="mt-1 flex flex-wrap gap-x-5 gap-y-1">
               {sms.monthly.map((m) => (
                 <li key={m.month} dir="ltr" className="tabular-nums">
-                  {m.month}: {m.costAgorot === null ? "—" : formatAgorot(m.costAgorot)}
+                  {m.month}: {m.costIls === null ? "—" : formatTotalIls(m.costIls)}
                 </li>
               ))}
             </ul>
