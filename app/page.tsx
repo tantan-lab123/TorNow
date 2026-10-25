@@ -14,6 +14,7 @@ import { OwnerTour } from "@/components/landing/OwnerTour";
 import { FeatureGrid } from "@/components/landing/FeatureGrid";
 import { DemoQr } from "@/components/landing/DemoQr";
 import { RevealObserver } from "@/components/landing/RevealObserver";
+import { LegalBar } from "@/components/landing/LegalBar";
 
 export const dynamic = "force-dynamic";
 
@@ -211,6 +212,12 @@ export default async function HomePage() {
                 {n.label}
               </a>
             ))}
+            <Link
+              href="/pricing"
+              className="rounded-md px-3 py-2 text-[15px] font-semibold text-ink-700 transition-colors hover:bg-ink-100 hover:text-ink-900"
+            >
+              מחירון
+            </Link>
           </nav>
           <div className="ms-auto flex items-center gap-1 sm:gap-2">
             <Link
@@ -529,7 +536,10 @@ export default async function HomePage() {
                 הלקוחות קובעים, משנים ומבטלים לבד. אתם רואים הכל ביומן אחד בטלפון.
               </p>
             </div>
-            <FooterColumn title="המוצר" links={NAV.map((n) => ({ href: `#${n.id}`, label: n.label }))} />
+            <FooterColumn
+              title="המוצר"
+              links={[...NAV.map((n) => ({ href: `#${n.id}`, label: n.label })), { href: "/pricing", label: "מחירון" }]}
+            />
             {demos.length > 0 && (
               <FooterColumn title="לנסות כמו לקוח" links={demos.map((d) => ({ href: `/${d.slug}`, label: d.name }))} />
             )}
@@ -541,18 +551,7 @@ export default async function HomePage() {
               ]}
             />
           </div>
-          <div className="mt-12 flex flex-col justify-between gap-2 border-t border-ink-200 pt-6 text-[14px] text-ink-600 sm:flex-row">
-            <span>© TorNow</span>
-            <span className="flex flex-wrap gap-x-5">
-              <Link href="/privacy" className="inline-flex min-h-11 items-center font-semibold hover:text-brand-600">
-                מדיניות פרטיות
-              </Link>
-              <Link href="/terms" className="inline-flex min-h-11 items-center font-semibold hover:text-brand-600">
-                תנאי שימוש
-              </Link>
-            </span>
-            <span>תורים לעסקים קטנים בישראל</span>
-          </div>
+          <LegalBar />
         </div>
       </footer>
 
