@@ -1,13 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { unauthorized, verifyBearer } from "@/lib/auth";
 import { planReminders, runDueSms } from "@/lib/sms/service";
+import { HEARTBEAT_JOB_SMS } from "@/lib/superadmin/config";
+import { recordHeartbeat } from "@/lib/superadmin/heartbeat";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
+/** Notes "I ran". Whatever goes wrong in there stays in there. */
+async function noteRun(ok: boolean, detail: string): Promise<void> {
+  try {
+    await recordHeartbeat(HEARTBEAT_JOB_SMS, ok, detail);
+  } catch {
+    // the heartbeat is bookkeeping: it never changes what the job does
+  }
+}
+
 // Called every few minutes by an external scheduler (cron-job.org) with
 // "Authorization: Bearer <CRON_SECRET>". First queues the reminders that have become due, then sends
-// and retries the SMS that are due.
+// and retries the SMS that are due. At the end of every run it notes "I ran" (cron_heartbeat) for the
+// operator dashboard; that note can never change what the job does.
 export async function POST(request: NextRequest) {
   if (!verifyBearer(request, process.env.CRON_SECRET)) return unauthorized();
 
@@ -22,10 +34,16 @@ export async function POST(request: NextRequest) {
 
   try {
     const result = await runDueSms(10);
+    await noteRun(
+      true,
+      `sent=${result.sent} retry=${result.retry} failed=${result.failed} skipped=${result.skipped}` +
+        ("error" in reminders ? " reminders=error" : ` reminders_planned=${reminders.planned}`)
+    );
     return NextResponse.json({ success: true, reminders, ...result }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     // e.g. the migration is not applied yet: report, do not crash the scheduler
     console.error("sms outbox job failed");
+    await noteRun(false, "run failed");
     return NextResponse.json({ success: false }, { status: 500 });
   }
 }

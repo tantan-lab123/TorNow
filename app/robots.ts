@@ -4,7 +4,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://tornow-eight.verce
 
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: { userAgent: "*", allow: "/", disallow: ["/admin", "/api/", "/cancel/", "/t/"] },
+    rules: { userAgent: "*", allow: "/", disallow: ["/admin", "/api/", "/cancel/", "/t/", "/superadmin"] },
     sitemap: `${SITE_URL}/sitemap.xml`,
   };
 }

@@ -31,6 +31,15 @@ function sign(data: string): string {
   return crypto.createHmac("sha256", getSecret()).update(data).digest("base64url");
 }
 
+/**
+ * A signature for another purpose than the owner session. The domain goes in front of the data, so a
+ * signature made for one purpose is never valid for another (a payload of the owner session is base64url
+ * and cannot contain the ":" that follows the domain, so the two can not even be made to collide).
+ */
+export function signForDomain(domain: string, data: string): string {
+  return sign(`${domain}:${data}`);
+}
+
 function safeEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a);
   const bb = Buffer.from(b);
