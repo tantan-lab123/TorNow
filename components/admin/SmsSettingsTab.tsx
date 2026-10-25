@@ -22,7 +22,7 @@ interface SmsSettingsTabProps {
 }
 
 type Usage =
-  | { sent: number; segments: number; byKind?: { booked: number; reminder: number } }
+  | { sent: number; billed?: number; segments: number; byKind?: { booked: number; reminder: number } }
   | "unavailable"
   | null;
 
@@ -101,11 +101,10 @@ export function SmsSettingsTab({ business, onUpdateSettings }: SmsSettingsTabPro
   const usageLine = (() => {
     if (usage === null) return "…";
     if (usage === "unavailable") return "—";
-    const parts = [`${usage.sent}`];
+    // the number that counts is the billed messages (a long message counts as more than one)
+    const parts = [`${usage.billed ?? usage.sent}`];
     if (usage.byKind && usage.byKind.reminder > 0) {
       parts.push(`(${usage.byKind.booked} אישורים · ${usage.byKind.reminder} תזכורות)`);
-    } else if (usage.segments > 0) {
-      parts.push(`(${usage.segments} מקטעים)`);
     }
     return parts.join(" ");
   })();
@@ -218,7 +217,7 @@ export function SmsSettingsTab({ business, onUpdateSettings }: SmsSettingsTabPro
       </div>
 
       <div className="border-t border-slate-100 pt-3 text-xs text-ink-600">
-        נשלחו החודש: <strong className="text-ink-900">{usageLine}</strong>
+        הודעות החודש: <strong className="text-ink-900">{usageLine}</strong>
       </div>
     </Card>
   );

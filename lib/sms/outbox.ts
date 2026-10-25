@@ -9,7 +9,7 @@ import {
 } from "@/lib/sms/019";
 import { generateManageToken, hashManageToken } from "@/lib/sms/manage-token";
 import { buildManageUrl } from "@/lib/sms/template";
-import { countSegments, dateTimeVars, renderSmsMessageDetailed } from "@/lib/sms/message";
+import { billedMessages, countSegments, dateTimeVars, renderSmsMessageDetailed } from "@/lib/sms/message";
 import { getSmsTemplate, smsBlockReason } from "@/lib/sms/policy";
 import { phoneLimitHit, type PhoneCounter } from "@/lib/sms/limits";
 
@@ -50,6 +50,8 @@ export interface FinishPatch {
   shipmentId?: string | null;
   /** SMS segments of the message that went out (usage counting). */
   segments?: number | null;
+  /** Messages 019 bills for the text that went out (billedMessages). Written once, at send time, never recomputed. */
+  billedMessages?: number | null;
 }
 
 export interface SmsRepo extends PhoneCounter {
@@ -280,6 +282,7 @@ export async function processSmsRow(id: string, repo: SmsRepo, ctx: SmsEnv = {})
         status: "sent",
         shipmentId: result.shipmentId ?? null,
         segments: countSegments(message).segments,
+        billedMessages: billedMessages(message),
         errorCode: null,
         errorMessage: null,
       });

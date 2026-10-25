@@ -4,13 +4,14 @@ import React, { useMemo, useState } from "react";
 import type { BusinessLine } from "@/lib/superadmin/metrics";
 import { formatDateTime, formatNumber } from "@/components/superadmin/format";
 
-type Key = "name" | "createdAt" | "appts30d" | "smsSent30d" | "segments30d" | "smsFailed30d" | "lastAppointmentAt";
+type Key = "name" | "createdAt" | "appts30d" | "smsSent30d" | "billed30d" | "segments30d" | "smsFailed30d" | "lastAppointmentAt";
 
 const COLUMNS: { key: Key; label: string; numeric: boolean }[] = [
   { key: "name", label: "עסק", numeric: false },
   { key: "createdAt", label: "נרשם", numeric: false },
   { key: "appts30d", label: "תורים (30 יום)", numeric: true },
   { key: "smsSent30d", label: "SMS (30 יום)", numeric: true },
+  { key: "billed30d", label: "הודעות לחיוב", numeric: true },
   { key: "segments30d", label: "מקטעים", numeric: true },
   { key: "smsFailed30d", label: "SMS שנכשלו", numeric: true },
   { key: "lastAppointmentAt", label: "תור אחרון", numeric: false },
@@ -83,7 +84,8 @@ export function BusinessTable({ rows }: { rows: BusinessLine[] }) {
               <td className="px-3 py-2.5">{formatDateTime(r.createdAt, true)}</td>
               <td className="px-3 py-2.5 tabular-nums">{formatNumber(r.appts30d)}</td>
               <td className="px-3 py-2.5 tabular-nums">{formatNumber(r.smsSent30d)}</td>
-              <td className="px-3 py-2.5 tabular-nums">{formatNumber(r.segments30d)}</td>
+              <td className="px-3 py-2.5 font-bold tabular-nums">{formatNumber(r.billed30d)}</td>
+              <td className="px-3 py-2.5 tabular-nums text-ink-600">{formatNumber(r.segments30d)}</td>
               <td className="px-3 py-2.5 tabular-nums">{formatNumber(r.smsFailed30d)}</td>
               <td className="px-3 py-2.5">{r.lastAppointmentAt ? formatDateTime(r.lastAppointmentAt, true) : "—"}</td>
             </tr>

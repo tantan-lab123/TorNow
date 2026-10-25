@@ -10,9 +10,17 @@ export function formatPct(p: number | null): string {
   return p === null ? "—" : `${new Intl.NumberFormat("he-IL", { maximumFractionDigits: 1 }).format(p)}%`;
 }
 
-/** Agorot as shekels. */
-export function formatAgorot(agorot: number): string {
-  return new Intl.NumberFormat("he-IL", { style: "currency", currency: "ILS" }).format(agorot / 100);
+const ils = (digits: number) =>
+  new Intl.NumberFormat("he-IL", { style: "currency", currency: "ILS", minimumFractionDigits: digits, maximumFractionDigits: digits });
+
+/** A total in shekels, rounded to 2 decimals for display only (the value itself is never rounded). */
+export function formatTotalIls(shekels: number): string {
+  return ils(2).format(shekels);
+}
+
+/** A price per message in shekels, 3 decimals (₪0.009). */
+export function formatPriceIls(shekels: number): string {
+  return ils(3).format(shekels);
 }
 
 /** A date (and time) in Israel time. */

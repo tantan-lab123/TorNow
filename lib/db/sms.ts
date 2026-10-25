@@ -19,6 +19,7 @@ const COLUMNS = "id, appointment_id, kind, to_phone, status, attempts, next_atte
 interface MockRow extends SmsOutboxRow {
   business_id: string | null;
   segments: number | null;
+  billed_messages: number | null;
   for_start_time: string | null;
   last_error_code: string | null;
   last_error_message: string | null;
@@ -37,7 +38,7 @@ const mock = (globalThis.__SMS_OUTBOX__ ??= []);
 const adminClient = () => (isSupabaseConfigured && supabaseAdmin ? supabaseAdmin : null);
 
 /**
- * business_id and segments came with a later migration. Until it has run, the database says the
+ * business_id, segments and billed_messages came with later migrations. Until it has run, the database says the
  * column is unknown (PostgREST: PGRST204, Postgres: 42703): then the write is repeated without
  * them, so confirmations keep going out. A safety net, not the plan: run the migration first.
  */
@@ -104,6 +105,7 @@ export async function insertSmsOutbox(row: {
     appointment_id: row.appointmentId,
     business_id: row.businessId ?? null,
     segments: null,
+    billed_messages: null,
     for_start_time: row.kind === "reminder" ? (row.forStartTime ?? null) : null,
     created_at: nowIso,
     kind: row.kind,
@@ -183,20 +185,24 @@ export async function finishSmsOutbox(id: string, patch: FinishPatch): Promise<v
   if (patch.errorMessage !== undefined) cols.last_error_message = patch.errorMessage;
   if (patch.shipmentId !== undefined) cols.provider_shipment_id = patch.shipmentId;
   const admin = adminClient();
+  const segmentCols = patch.segments !== undefined ? { segments: patch.segments } : {};
+  const billedCols = patch.billedMessages !== undefined ? { billed_messages: patch.billedMessages } : {};
   if (admin) {
-    let { error } = await admin
-      .from("sms_outbox")
-      .update(patch.segments !== undefined ? { ...cols, segments: patch.segments } : cols)
-      .eq("id", id);
-    // the segments column may not exist yet (migration not run): the update is repeated without it
-    if (patch.segments !== undefined && isMissingColumnError(error)) {
-      ({ error } = await admin.from("sms_outbox").update(cols).eq("id", id));
+    // segments and billed_messages came with two different migrations. If a column is unknown the update is
+    // repeated without the newest one first, then without both, so a sent message is always recorded as sent.
+    const attempts: Record<string, unknown>[] = [{ ...cols, ...segmentCols, ...billedCols }];
+    if (patch.billedMessages !== undefined) attempts.push({ ...cols, ...segmentCols });
+    if (patch.segments !== undefined) attempts.push(cols);
+    let error: { code?: string; message?: string } | null = null;
+    for (const payload of attempts) {
+      ({ error } = await admin.from("sms_outbox").update(payload).eq("id", id));
+      if (!isMissingColumnError(error)) break;
     }
     if (error) throw error;
     return;
   }
   const r = mock.find((x) => x.id === id);
-  if (r) Object.assign(r, cols, patch.segments !== undefined ? { segments: patch.segments } : {});
+  if (r) Object.assign(r, cols, segmentCols, billedCols);
 }
 
 export async function setSmsManageToken(id: string, hash: string, expiresAtIso: string): Promise<void> {
@@ -287,7 +293,9 @@ export async function recordSmsDelivery(
 export interface SmsUsage {
   /** Messages handed to the provider this month (status "sent"; skipped and failed ones don't count) */
   sent: number;
-  /** Their SMS segments (rows from before the segments column count as 0) */
+  /** Messages 019 bills for them (billed_messages; a sent row without the number counts 1). The number the owner sees. */
+  billed: number;
+  /** Their SMS segments (rows from before the segments column count as 0): a technical number only */
   segments: number;
   /** How many of them were confirmations and how many reminders */
   byKind: { booked: number; reminder: number };
@@ -295,39 +303,53 @@ export interface SmsUsage {
   since: string;
 }
 
+/** A sent row without a stored number (sent before billed_messages existed, or the column was missing) is one billed message. */
+const billedOf = (n: number | null | undefined) => n ?? 1;
+
 /** This business's SMS usage from the start of the current Israeli calendar month. */
 export async function getSmsUsage(businessId: string, now: Date = new Date()): Promise<SmsUsage> {
   const since = israelMonthStartIso(now);
   const admin = adminClient();
   if (admin) {
     let sent = 0;
+    let billed = 0;
     let segments = 0;
     const byKind = { booked: 0, reminder: 0 };
     const PAGE = 1000;
+    let columns = "billed_messages, segments, kind";
     for (let from = 0; ; from += PAGE) {
-      const { data, error } = await admin
-        .from("sms_outbox")
-        .select("segments, kind")
-        .eq("business_id", businessId)
-        .eq("status", "sent")
-        .gte("created_at", since)
-        .order("created_at", { ascending: true })
-        .order("id", { ascending: true })
-        .range(from, from + PAGE - 1);
+      const page = () =>
+        admin
+          .from("sms_outbox")
+          .select(columns)
+          .eq("business_id", businessId)
+          .eq("status", "sent")
+          .gte("created_at", since)
+          .order("created_at", { ascending: true })
+          .order("id", { ascending: true })
+          .range(from, from + PAGE - 1);
+      let { data, error } = await page();
+      // billed_messages may not exist yet (migration not run): read without it, every row then counts 1
+      if (isMissingColumnError(error)) {
+        columns = "segments, kind";
+        ({ data, error } = await page());
+      }
       if (error) throw error;
-      for (const r of (data ?? []) as { segments: number | null; kind: string }[]) {
+      for (const r of (data ?? []) as unknown as { billed_messages?: number | null; segments: number | null; kind: string }[]) {
         sent += 1;
+        billed += billedOf(r.billed_messages);
         segments += r.segments ?? 0;
         if (r.kind === "reminder") byKind.reminder += 1;
         else byKind.booked += 1;
       }
       if (!data || data.length < PAGE) break;
     }
-    return { sent, segments, byKind, since };
+    return { sent, billed, segments, byKind, since };
   }
   const rows = mock.filter((r) => r.business_id === businessId && r.status === "sent");
   return {
     sent: rows.length,
+    billed: rows.reduce((n, r) => n + billedOf(r.billed_messages), 0),
     segments: rows.reduce((n, r) => n + (r.segments ?? 0), 0),
     byKind: {
       booked: rows.filter((r) => r.kind !== "reminder").length,

@@ -40,6 +40,7 @@ export type FakeRow = SmsOutboxRow & {
   shipment?: string | null;
   business_id?: string | null;
   segments?: number | null;
+  billed_messages?: number | null;
   for_start_time?: string | null;
 };
 
@@ -104,6 +105,7 @@ export function fakeRepo(
       if (patch.errorCode !== undefined) r.error = patch.errorCode;
       if (patch.shipmentId !== undefined) r.shipment = patch.shipmentId;
       if (patch.segments !== undefined) r.segments = patch.segments;
+      if (patch.billedMessages !== undefined) r.billed_messages = patch.billedMessages;
     },
     async setToken(id, hash, expires) {
       tokens.push({ id, hash, expires });

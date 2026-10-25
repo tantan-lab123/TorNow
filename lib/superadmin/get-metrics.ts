@@ -89,6 +89,7 @@ async function loadMemoryData(): Promise<MemoryData> {
       status: String(o.status),
       last_error_code: (o.last_error_code as string | null) ?? null,
       segments: (o.segments as number | null) ?? null,
+      billed_messages: (o.billed_messages as number | null) ?? null,
       delivered_at: (o.delivered_at as string | null) ?? null,
       created_at: String(o.created_at),
       next_attempt_at: String(o.next_attempt_at),

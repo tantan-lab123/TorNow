@@ -117,6 +117,35 @@ describe("missing columns (migration not run yet)", () => {
     expect(state.calls[1].payload).not.toHaveProperty("segments");
   });
 
+  it("billed_messages is written in the same update as the segments", async () => {
+    await finishSmsOutbox("row-1", { status: "sent", segments: 4, billedMessages: 2 });
+    expect(state.calls).toHaveLength(1);
+    expect(state.calls[0].payload).toMatchObject({ status: "sent", segments: 4, billed_messages: 2 });
+  });
+
+  it("billed_messages column missing: repeated without it, the segments are kept", async () => {
+    state.replies = [{ error: { code: "PGRST204" } }, { error: null }];
+    await finishSmsOutbox("row-1", { status: "sent", segments: 4, billedMessages: 2 });
+    expect(state.calls).toHaveLength(2);
+    expect(state.calls[1].payload).toMatchObject({ status: "sent", segments: 4 });
+    expect(state.calls[1].payload).not.toHaveProperty("billed_messages");
+  });
+
+  it("neither new column exists: three tries, the last one is the plain status update, and it never throws for them", async () => {
+    state.replies = [{ error: { code: "42703" } }, { error: { code: "42703" } }, { error: null }];
+    await finishSmsOutbox("row-1", { status: "sent", segments: 4, billedMessages: 2 });
+    expect(state.calls).toHaveLength(3);
+    expect(state.calls[2].payload).not.toHaveProperty("segments");
+    expect(state.calls[2].payload).not.toHaveProperty("billed_messages");
+    expect(state.calls[2].payload).toMatchObject({ status: "sent" });
+  });
+
+  it("another error on the first try is thrown, not retried", async () => {
+    state.replies = [{ error: { code: "08006" } }];
+    await expect(finishSmsOutbox("row-1", { status: "sent", segments: 4, billedMessages: 2 })).rejects.toMatchObject({ code: "08006" });
+    expect(state.calls).toHaveLength(1);
+  });
+
   it("a finish without segments is a single update", async () => {
     await finishSmsOutbox("row-1", { status: "failed" });
     expect(state.calls).toHaveLength(1);
@@ -133,10 +162,19 @@ describe("missing columns (migration not run yet)", () => {
 describe("usage", () => {
   it("counts this business's sent rows since the start of the Israeli month and adds up the segments", async () => {
     const now = new Date("2026-10-15T12:00:00Z");
-    state.replies = [{ data: [{ segments: 2 }, { segments: 3 }, { segments: null }] }];
+    state.replies = [
+      {
+        data: [
+          { billed_messages: 2, segments: 2 },
+          { billed_messages: 1, segments: 3 },
+          { billed_messages: null, segments: null }, // sent before the column existed: counts 1
+        ],
+      },
+    ];
     const usage = await getSmsUsage("b1", now);
     expect(usage).toEqual({
       sent: 3,
+      billed: 4,
       segments: 5,
       byKind: { booked: 3, reminder: 0 },
       since: "2026-09-30T21:00:00.000Z",
@@ -161,8 +199,24 @@ describe("usage", () => {
   });
 
   it("fails (the screen then shows a dash) when the column does not exist yet", async () => {
-    state.replies = [{ error: { code: "42703", message: "column business_id does not exist" } }];
+    state.replies = [
+      { error: { code: "42703", message: "column business_id does not exist" } },
+      { error: { code: "42703", message: "column business_id does not exist" } },
+    ];
     await expect(getSmsUsage("b1")).rejects.toMatchObject({ code: "42703" });
+  });
+
+  it("billed_messages not there yet: read again without it, every sent row counts 1", async () => {
+    state.replies = [{ error: { code: "42703" } }, { data: [{ segments: 4, kind: "booked" }, { segments: 9, kind: "reminder" }] }];
+    const usage = await getSmsUsage("b1", new Date("2026-10-15T12:00:00Z"));
+    expect(usage).toMatchObject({ sent: 2, billed: 2, segments: 13 });
+    expect(state.calls.map((c) => c.columns)).toEqual(["billed_messages, segments, kind", "segments, kind"]);
+  });
+
+  it("a long message counts as several: the owner's number is the sum of billed_messages", async () => {
+    state.replies = [{ data: [{ billed_messages: 3, segments: 9, kind: "booked" }, { billed_messages: 1, segments: 2, kind: "booked" }] }];
+    const usage = await getSmsUsage("b1", new Date("2026-10-15T12:00:00Z"));
+    expect(usage).toMatchObject({ sent: 2, billed: 4 });
   });
 });
 
@@ -171,15 +225,15 @@ describe("usage by kind", () => {
     state.replies = [
       {
         data: [
-          { segments: 2, kind: "booked" },
-          { segments: 2, kind: "reminder" },
-          { segments: 2, kind: "reminder" },
+          { billed_messages: 1, segments: 2, kind: "booked" },
+          { billed_messages: 1, segments: 2, kind: "reminder" },
+          { billed_messages: 1, segments: 2, kind: "reminder" },
         ],
       },
     ];
     const usage = await getSmsUsage("b1", new Date("2026-10-15T12:00:00Z"));
-    expect(usage).toMatchObject({ sent: 3, segments: 6, byKind: { booked: 1, reminder: 2 } });
-    expect(state.calls[0].columns).toBe("segments, kind");
+    expect(usage).toMatchObject({ sent: 3, billed: 3, segments: 6, byKind: { booked: 1, reminder: 2 } });
+    expect(state.calls[0].columns).toBe("billed_messages, segments, kind");
   });
 });
 

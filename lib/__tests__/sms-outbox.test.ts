@@ -8,6 +8,7 @@ import {
   processSmsRow,
   skipReason,
 } from "@/lib/sms/outbox";
+import { billedMessages } from "@/lib/sms/message";
 import type { Appointment } from "@/lib/types";
 import { BIZ_ID, ENV, NOW, appt, biz, ctx, fakeRepo, ok, providerError } from "./helpers/sms-fakes";
 
@@ -257,5 +258,43 @@ describe("the business's own settings", () => {
     await processSmsRow(q!.id, repo, ctx(ok()));
     // 150 + space + 66-character link = 217 units -> 4 segments
     expect(rows.get(q!.id)!.segments).toBe(4);
+  });
+
+  it("records the billed messages of the exact text that was sent, in the same finish as the segments", async () => {
+    const { repo, rows } = fakeRepo(appt(), biz({ sms_confirmation_template: "א".repeat(150) + " {link}" }));
+    const q = await enqueueBookedSms({ appointmentId: "appt-1", phone: "0501234567", business: biz() }, repo, { env: ENV });
+    const finish = vi.spyOn(repo, "finish");
+    const fetchImpl = ok();
+    await processSmsRow(q!.id, repo, ctx(fetchImpl));
+    // 150 + space + 57-character test link (https://tornow.example/t/<32>) = 208 characters -> 2 billed messages (and 4 carrier segments)
+    expect(sentMessage(fetchImpl)).toHaveLength(208);
+    expect(rows.get(q!.id)!.billed_messages).toBe(2);
+    expect(rows.get(q!.id)!.billed_messages).toBe(billedMessages(sentMessage(fetchImpl)));
+    expect(rows.get(q!.id)!.segments).toBe(4);
+    const sentCalls = finish.mock.calls.filter(([, patch]) => patch.status === "sent");
+    expect(sentCalls).toHaveLength(1);
+    expect(sentCalls[0][1]).toMatchObject({ segments: 4, billedMessages: 2 });
+  });
+
+  it("the default confirmation is one billed message", async () => {
+    const { repo, rows } = fakeRepo();
+    const q = await enqueueBookedSms({ appointmentId: "appt-1", phone: "0501234567", business: biz() }, repo, { env: ENV });
+    await processSmsRow(q!.id, repo, ctx(ok()));
+    expect(rows.get(q!.id)!.billed_messages).toBe(1);
+  });
+
+  it("a message that was not sent has no billed number", async () => {
+    const { repo, rows } = fakeRepo(appt(), biz({ sms_confirmation_enabled: false }));
+    const q = await enqueueBookedSms({ appointmentId: "appt-1", phone: "0501234567", business: biz() }, repo, { env: ENV });
+    await processSmsRow(q!.id, repo, ctx(ok()));
+    expect(rows.get(q!.id)!.status).toBe("skipped");
+    expect(rows.get(q!.id)!.billed_messages).toBeUndefined();
+  });
+
+  it("a failed send has no billed number either", async () => {
+    const { repo, rows } = fakeRepo();
+    const q = await enqueueBookedSms({ appointmentId: "appt-1", phone: "0501234567", business: biz() }, repo, { env: ENV });
+    await processSmsRow(q!.id, repo, ctx(providerError(4)));
+    expect(rows.get(q!.id)!.billed_messages).toBeUndefined();
   });
 });

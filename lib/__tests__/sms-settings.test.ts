@@ -260,23 +260,35 @@ describe("GET /api/sms/usage (real route, in-memory database)", () => {
     expect((await getUsage(null)).status).toBe(401);
   });
 
-  it("counts only this business's sent messages, with their segments", async () => {
+  it("counts only this business's sent messages: billed messages (the owner's number) and segments", async () => {
     const { insertSmsOutbox, finishSmsOutbox } = await import("@/lib/db/sms");
-    const queue = async (businessId: string, appointmentId: string, status: "sent" | "skipped" | "failed", segments?: number) => {
+    const queue = async (
+      businessId: string,
+      appointmentId: string,
+      status: "sent" | "skipped" | "failed",
+      segments?: number,
+      billedMessages?: number
+    ) => {
       const row = await insertSmsOutbox({ appointmentId, businessId, kind: "booked", toPhone: "501234567", status: "pending" });
-      await finishSmsOutbox(row!.id, { status, ...(segments !== undefined ? { segments } : {}) });
+      await finishSmsOutbox(row!.id, {
+        status,
+        ...(segments !== undefined ? { segments } : {}),
+        ...(billedMessages !== undefined ? { billedMessages } : {}),
+      });
     };
     const before = await (await getUsage(await cookieFor("owner"))).json();
 
-    await queue(BIZ, "usage-a1", "sent", 2);
-    await queue(BIZ, "usage-a2", "sent", 3);
-    await queue(BIZ, "usage-a3", "skipped");
-    await queue(BIZ, "usage-a4", "failed");
-    await queue("another-business", "usage-b1", "sent", 4);
+    await queue(BIZ, "usage-a1", "sent", 2, 1);
+    await queue(BIZ, "usage-a2", "sent", 9, 3); // a long message: three billed
+    await queue(BIZ, "usage-a2b", "sent", 3); // sent before billed_messages existed: counts 1
+    await queue(BIZ, "usage-a3", "skipped", undefined, 2);
+    await queue(BIZ, "usage-a4", "failed", undefined, 2);
+    await queue("another-business", "usage-b1", "sent", 4, 2);
 
     const after = await (await getUsage(await cookieFor("owner"))).json();
-    expect(after.sent - before.sent).toBe(2);
-    expect(after.segments - before.segments).toBe(5);
+    expect(after.sent - before.sent).toBe(3);
+    expect(after.billed - before.billed).toBe(5); // 1 + 3 + 1
+    expect(after.segments - before.segments).toBe(14);
     expect(typeof after.since).toBe("string");
   });
 });

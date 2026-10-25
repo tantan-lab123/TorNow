@@ -1,14 +1,21 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_BOOKED_TEMPLATE,
+  DEFAULT_REMINDER_TEMPLATE,
+  SMS_CHARS_PER_BILLED_MESSAGE,
+  SMS_SEGMENTS_MAX,
   SMS_LINK_LENGTH_FALLBACK,
   SMS_TEMPLATE_MAX_RAW,
+  analyzeTemplate,
+  billedMessages,
   checkWorstCaseLength,
   countSegments,
   manageLinkLength,
   previewVars,
   renderBookedMessage,
   renderBookedMessageDetailed,
+  renderSmsMessageDetailed,
   validateTemplate,
   type SmsVars,
 } from "@/lib/sms/message";
@@ -274,5 +281,108 @@ describe("shouldSendSms / getSmsTemplate", () => {
     expect(getSmsTemplate({ settings: { sms_confirmation_template: "  " } }, "booked")).toBeUndefined();
     expect(getSmsTemplate({ settings: {} }, "booked")).toBeUndefined();
     expect(getSmsTemplate(undefined, "booked")).toBeUndefined();
+  });
+});
+
+describe("billedMessages: what 019 bills", () => {
+  it("the constant is 201 characters per billed message", () => {
+    expect(SMS_CHARS_PER_BILLED_MESSAGE).toBe(201);
+  });
+
+  // Checked by hand in the 019 panel with Hebrew text: 201 = 1, 202 = 2, 402 = 2, 403 = 3.
+  it.each([
+    [0, 0],
+    [1, 1],
+    [70, 1],
+    [71, 1],
+    [134, 1],
+    [135, 1],
+    [201, 1],
+    [202, 2],
+    [268, 2],
+    [402, 2],
+    [403, 3],
+  ])("%i Hebrew characters are %i billed message(s)", (length, billed) => {
+    expect(billedMessages("א".repeat(length))).toBe(billed);
+  });
+
+  // NOT checked in the 019 panel: 603 and 604 follow the same rule (ceil(length / 201)), nobody has confirmed them.
+  it.each([
+    [603, 3],
+    [604, 4],
+  ])("(unconfirmed, same rule) %i characters are %i", (length, billed) => {
+    expect(billedMessages("א".repeat(length))).toBe(billed);
+  });
+
+  it("counts UTF-16 units (an emoji is 2); how 019 counts an emoji is not checked", () => {
+    expect(billedMessages("😀".repeat(100))).toBe(1); // 200 units
+    expect(billedMessages("😀".repeat(101))).toBe(2); // 202 units
+  });
+
+  it("the same rule for Latin-only text (not checked against 019 either)", () => {
+    expect(billedMessages("a".repeat(201))).toBe(1);
+    expect(billedMessages("a".repeat(202))).toBe(2);
+  });
+
+  it("billing no longer follows the carrier segments: 201 characters are 3 segments but 1 billed message", () => {
+    const text = "א".repeat(201);
+    expect(countSegments(text).segments).toBe(3);
+    expect(billedMessages(text)).toBe(1);
+  });
+
+  it("the default confirmation and the default reminder are each exactly one billed message", () => {
+    const booked = renderSmsMessageDetailed("booked", null, vars());
+    const reminder = renderSmsMessageDetailed("reminder", null, vars());
+    expect(booked.text.length).toBe(123);
+    expect(billedMessages(booked.text)).toBe(1);
+    expect(billedMessages(reminder.text)).toBe(1);
+    // also with a longer, still normal, business name
+    expect(billedMessages(renderSmsMessageDetailed("booked", null, vars({ business: "ב".repeat(30) })).text)).toBe(1);
+    expect(billedMessages(renderSmsMessageDetailed("reminder", null, vars({ business: "ב".repeat(30) })).text)).toBe(1);
+    expect(DEFAULT_REMINDER_TEMPLATE).toContain("{link}");
+  });
+});
+
+describe("the editor hint follows the billed messages of the worst case", () => {
+  // no variables in the wording: the worst case is N characters + a space + the 66-character fallback link
+  const wording = (n: number) => `${"א".repeat(n)} {link}`;
+
+  it("201 characters in the worst case: one message, no warning", () => {
+    const a = analyzeTemplate("booked", wording(134));
+    expect(a.worst).toEqual({ length: 201, billed: 1 });
+    expect(a.warn).toBe(false);
+  });
+
+  it("202 characters in the worst case: counted as 2 messages, with a warning", () => {
+    const a = analyzeTemplate("booked", wording(135));
+    expect(a.worst).toEqual({ length: 202, billed: 2 });
+    expect(a.warn).toBe(true);
+    expect(a.error).toBeNull(); // only a warning: the wording can still be saved
+  });
+
+  it("the worst case, not the example: a wording with {name} is judged with the longest first name", () => {
+    const text = "שלום {name}, תור ב-{date}. {link}";
+    const a = analyzeTemplate("booked", text);
+    expect(a.worst.length).toBeGreaterThan(a.info.length); // the 60-letter name vs the example "דנה"
+  });
+
+  it("the default wordings are one message in the worst case too", () => {
+    expect(analyzeTemplate("booked", DEFAULT_BOOKED_TEMPLATE, { businessName: "סלון נועה" }).worst.billed).toBe(1);
+    expect(analyzeTemplate("reminder", DEFAULT_REMINDER_TEMPLATE, { businessName: "סלון נועה" }).worst.billed).toBe(1);
+  });
+
+  it("the hard limit and the saved-template validation are unchanged: more than 4 segments is an error", () => {
+    expect(SMS_SEGMENTS_MAX).toBe(4);
+    expect(checkWorstCaseLength("א".repeat(220), { businessName: "x", longestServiceName: "y" })).toMatch(/ארוכה מדי/);
+    expect(validateTemplate("א".repeat(SMS_TEMPLATE_MAX_RAW + 1)).ok).toBe(false);
+  });
+
+  it("the old 'more than 2 segments' warning is gone; the editor speaks in messages", () => {
+    const editor = readFileSync("components/admin/SmsTemplateEditor.tsx", "utf8");
+    expect(editor).not.toContain("SMS_SEGMENTS_WARN");
+    expect(editor).toContain("הודעה אחת");
+    expect(editor).toContain("ההודעה תיספר כ-");
+    expect(editor).toContain("תווים");
+    expect(readFileSync("lib/sms/message.ts", "utf8")).not.toContain("SMS_SEGMENTS_WARN");
   });
 });

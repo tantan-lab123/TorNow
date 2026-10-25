@@ -55,9 +55,7 @@ export function normalizeReminderMinutes(v: unknown): number {
 
 /** Longest template the owner may save (before the variables are filled in). */
 export const SMS_TEMPLATE_MAX_RAW = 300;
-/** More than this many segments is only a warning ... */
-export const SMS_SEGMENTS_WARN = 2;
-/** ... and more than this many is not allowed. */
+/** More than this many carrier segments is not allowed (the warning is in billed messages, see billedMessages). */
 export const SMS_SEGMENTS_MAX = 4;
 /** First names are limited to this by the booking form. */
 export const SMS_MAX_FIRST_NAME = 60;
@@ -256,6 +254,25 @@ export function countSegments(text: string): SegmentInfo {
   return { length: gsmLength, segments: gsmLength <= 160 ? 1 : Math.ceil(gsmLength / 153), unicode: false };
 }
 
+// ------------------------------------------------------------------ what 019 bills
+
+/**
+ * Characters in one message as 019 bills it. Checked by hand in the 019 panel with Hebrew text: up to 201
+ * characters = 1 billed message, 202 = 2, 402 = 2, 403 = 3.
+ */
+export const SMS_CHARS_PER_BILLED_MESSAGE = 201;
+
+/**
+ * How many messages 019 bills for this text: ceil(length / 201), at least 1 for any text, 0 for none.
+ * This, not the carrier segments above, is the number the money follows.
+ * Length is UTF-16 units (text.length), so an emoji counts 2. We have not checked how 019 counts an emoji,
+ * and the same rule is applied to every text for now, Latin-only ones included.
+ */
+export function billedMessages(text: string): number {
+  if (text.length === 0) return 0;
+  return Math.ceil(text.length / SMS_CHARS_PER_BILLED_MESSAGE);
+}
+
 // ------------------------------------------------------------------ worst case at save time
 
 export interface WorstCaseContext {
@@ -307,6 +324,9 @@ export interface TemplateAnalysis {
   /** The message as it would go out, with example data (the default wording while the text is invalid). */
   rendered: RenderedMessage;
   info: SegmentInfo;
+  /** Characters and billed messages of the LONGEST message this wording can produce (longest name, service, ...). */
+  worst: { length: number; billed: number };
+  /** The wording can be billed as more than one message (worst case) */
   warn: boolean;
   tooLong: boolean;
   /** What stops the owner from saving, or null */
@@ -315,25 +335,38 @@ export interface TemplateAnalysis {
   isDefault: boolean;
 }
 
-/** Everything the editor shows about one wording: validity, live preview, length and segments. */
+/** The settings screen does not know the services: this long a service name is assumed for the worst case. */
+const ASSUMED_LONGEST_SERVICE = "x".repeat(30);
+
+/** Everything the editor shows about one wording: validity, live preview, length, billed messages and segments. */
 export function analyzeTemplate(
   kind: SmsTemplateKind,
   text: string,
-  opts: { businessName?: string; siteUrl?: string } = {}
+  opts: { businessName?: string; siteUrl?: string; longestServiceName?: string } = {}
 ): TemplateAnalysis {
   const check = validateTemplate(text);
+  const template = check.ok ? check.template : defaultTemplateFor(kind);
   const rendered = renderSmsMessageDetailed(
     kind,
-    check.ok ? check.template : defaultTemplateFor(kind),
+    template,
     previewVars({ businessName: opts.businessName, siteUrl: opts.siteUrl })
   );
   const info = countSegments(rendered.text);
   const tooLong = info.segments > SMS_SEGMENTS_MAX;
-  const warn = info.segments > SMS_SEGMENTS_WARN && !tooLong;
+  const worstText = renderTemplate(
+    template.includes("{link}") ? template : `${template}\n{link}`,
+    worstCaseVars({
+      businessName: opts.businessName?.trim() || "סלון נועה",
+      longestServiceName: opts.longestServiceName ?? ASSUMED_LONGEST_SERVICE,
+      siteUrl: opts.siteUrl,
+    })
+  );
+  const worst = { length: worstText.length, billed: billedMessages(worstText) };
+  const warn = worst.billed > 1 && !tooLong;
   const error = !check.ok
     ? check.error
     : tooLong
       ? `ההודעה ארוכה מדי: ${info.segments} מקטעים (המקסימום ${SMS_SEGMENTS_MAX})`
       : null;
-  return { check, rendered, info, warn, tooLong, error, isDefault: check.ok && check.template === defaultTemplateFor(kind) };
+  return { check, rendered, info, worst, warn, tooLong, error, isDefault: check.ok && check.template === defaultTemplateFor(kind) };
 }
