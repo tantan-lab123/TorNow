@@ -28,6 +28,8 @@ export const metadata: Metadata = {
   description: "תורלי: קביעת תורים מהטלפון לעסקים קטנים. הלקוחות קובעים לבד, ותזכורת יוצאת מהוואטסאפ שלכם בלחיצה.",
   applicationName: "TorNow",
   manifest: "/manifest.webmanifest",
+  // Google Search Console site verification. Public by design (it is in the page source), not a secret.
+  verification: { google: "BhvJ8Nk0S_w4FwJX505awOPXafEDtbfZ37JeZFVmI0c" },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
